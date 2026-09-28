@@ -31,7 +31,10 @@ const enemyAt = (hp: number, y = 300): Enemy => ({
   rotation: 0,
   sides: 6,
   palette: 0,
-  hitFlash: 0
+  hitFlash: 0,
+  vx: 0,
+  vy: 0,
+  reward: 10
 });
 
 const advance = (model: ReturnType<typeof createModel>, seconds: number) => {
@@ -63,12 +66,60 @@ test('砲台は指の横位置に追従し、画面の外には移動しない',
 
 test('1発の命中でHPが1だけ減り、撃破前は加点しない', () => {
   const model = playing();
-  model.enemies = [enemyAt(2)];
+  model.enemies = [enemyAt(3)];
   model.bullets = [{ x: 195, y: 335 }];
   stepModel(model, 1 / 120);
-  assert.equal(model.enemies[0].hp, 1);
+  assert.equal(model.enemies[0].hp, 2);
   assert.equal(model.score, 0);
   assert.equal(model.bullets.length, 0);
+});
+
+test('命中するたびに色が変わる', () => {
+  const model = playing();
+  model.enemies = [enemyAt(5)];
+  model.bullets = [{ x: 195, y: 335 }];
+  stepModel(model, 1 / 120);
+  assert.equal(model.enemies[0].palette, 1);
+});
+
+test('「2」に命中すると、小さい「1」の2体に分裂し、この時点では加点しない', () => {
+  const model = playing();
+  model.enemies = [enemyAt(2)];
+  model.nextId = 10;
+  model.bullets = [{ x: 195, y: 335 }];
+  const events = stepModel(model, 1 / 120);
+  assert.equal(model.enemies.length, 2);
+  assert.deepEqual(
+    model.enemies.map((enemy) => [enemy.hp, enemy.maxHp, enemy.id]),
+    [
+      [1, 1, 10],
+      [1, 1, 11]
+    ]
+  );
+  assert.ok(model.enemies.every((enemy) => enemy.radius < 40 && enemy.reward === 10));
+  assert.ok(model.enemies[0].vx < 0 && model.enemies[1].vx > 0);
+  assert.equal(model.bullets.length, 0);
+  assert.equal(model.score, 0);
+  assert.equal(model.kills, 0);
+  assert.equal(events.filter((event) => event.kind === 'split').length, 1);
+});
+
+test('分裂した「1」が見逃されたときは、通常より少ないダメージを受ける', () => {
+  const model = playing();
+  model.enemies = [{ ...enemyAt(1, WORLD.dangerY), maxHp: 1 }];
+  stepModel(model, 1 / 120);
+  assert.equal(model.hp, RULES.maxHp - RULES.splitMissDamage);
+  assert.equal(model.enemies.length, 0);
+});
+
+test('落ちてきたコインに砲台が触れると、跳ね終わる前でも取得できる', () => {
+  const model = playing();
+  model.hp = 50;
+  model.drops = [{ x: 195, y: WORLD.cannonY - 100, vx: 0, vy: 0, bounces: 0 }];
+  advance(model, 0.5);
+  assert.equal(model.drops.length, 0);
+  assert.equal(model.coins, 1);
+  assert.equal(model.hp, 50 + RULES.coinHealing);
 });
 
 test('弾が1フレームで敵を横切っても、手前の敵に一度だけ命中する', () => {
@@ -105,12 +156,12 @@ test('ドロップ確率に外れたときはコインを生成しない', () =>
   assert.equal(model.drops.length, 0);
 });
 
-test('コインは自動で取得され、HP上限を超えずに回復する', () => {
+test('コインは跳ね終わると自動で取得され、HP上限を超えずに回復する', () => {
   for (const hp of [50, 99, 100]) {
     const model = playing();
     model.hp = hp;
-    model.drops = [{ x: 30, y: 250, age: 0 }];
-    advance(model, 3);
+    model.drops = [{ x: 30, y: 250, vx: 0, vy: 0, bounces: 0 }];
+    advance(model, 5);
     assert.equal(model.drops.length, 0);
     assert.equal(model.coins, 1);
     assert.equal(model.hp, Math.min(RULES.maxHp, hp + RULES.coinHealing));
@@ -131,7 +182,7 @@ test('HPが0になるとゲームオーバーになり、同じフレームの�
   model.hp = 10;
   model.firing = true;
   model.enemies = [enemyAt(40, WORLD.dangerY)];
-  model.drops = [{ x: 195, y: WORLD.cannonY, age: 0 }];
+  model.drops = [{ x: 195, y: WORLD.cannonY, vx: 0, vy: 0, bounces: 0 }];
   stepModel(model, 1 / 120);
   assert.equal(model.hp, 0);
   assert.equal(model.status, 'over');
@@ -166,7 +217,7 @@ test('開始待ち・ゲームオーバーから再開操作をしてもプレ�
   assert.equal(model.status, 'over');
 });
 
-test('時間が経過しても敵のHP・速度・出現間隔は変化せず、同時出現は最大2体', () => {
+test('時間が経過しても敵のHP・速度・出現間隔は変化せず、同時出現数は上限を超えない', () => {
   const early = playing();
   const late = playing();
   early.spawnCooldown = 0;

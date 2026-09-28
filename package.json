@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc && vite build",
+    "test": "node --import tsx --test tests/*.test.ts",
     "lint": "biome check --write --unsafe ./src && npx tsc --noEmit",
     "preview": "vite preview",
     "serve": "python -m http.server -d dist"

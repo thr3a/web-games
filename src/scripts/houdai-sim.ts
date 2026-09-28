@@ -69,9 +69,17 @@ const percentile = (values: number[], p: number) => {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))];
 };
 
-const GAMES = 300;
+const GAMES = 200;
 // 例: node --import tsx ./src/scripts/houdai-sim.ts enemyMinHp=10 spawnInterval=2
-for (const arg of process.argv.slice(2)) {
+// @types/node を入れていないので、process.argv は型を確かめながら読む。
+const readArgs = (): string[] => {
+  const proc: unknown = Reflect.get(globalThis, 'process');
+  if (typeof proc !== 'object' || proc === null) return [];
+  const argv: unknown = Reflect.get(proc, 'argv');
+  if (!Array.isArray(argv)) return [];
+  return argv.slice(2).filter((arg): arg is string => typeof arg === 'string');
+};
+for (const arg of readArgs()) {
   const [key, value] = arg.split('=');
   if (!(key in RULES)) throw new Error(`不明なパラメータ: ${key}`);
   Object.assign(RULES, { [key]: Number(value) });

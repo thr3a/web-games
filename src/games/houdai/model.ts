@@ -5,13 +5,15 @@ export const RULES = {
   missDamage: 25,
   splitMissDamage: 10,
   coinHealing: 8,
-  coinChance: 0.35,
+  coinChance: 0.15,
   shotInterval: 0.12,
   bulletSpeed: 760,
-  spawnInterval: 2.8,
-  maxEnemies: 2,
-  enemyMinHp: 3,
-  enemyHpRange: 6,
+  spawnInterval: 1.2,
+  maxEnemies: 5,
+  speedMin: 45,
+  speedRange: 60,
+  enemyMinHp: 8,
+  enemyHpRange: 10,
   splitRadius: 22,
   splitSpeedX: 75,
   splitHop: 150,
@@ -114,12 +116,12 @@ export const resumeModel = (model: GameModel) => {
 const spawnEnemy = (model: GameModel, random: () => number) => {
   const hp = RULES.enemyMinHp + Math.floor(random() * RULES.enemyHpRange);
   const radius = 30 + hp * 0.8;
-  let anchorX = 60 + random() * (WORLD.width - 120);
-  const previous = model.enemies[0];
-  if (previous && Math.abs(previous.anchorX - anchorX) < 110) {
-    anchorX = previous.anchorX < WORLD.width / 2 ? 292 : 98;
-  }
-  const speed = 62 + random() * 14;
+  // 画面上部にいる敵となるべく重ならない位置を、いくつかの候補から選ぶ。
+  const upper = model.enemies.filter((enemy) => enemy.y < 260);
+  const clearance = (x: number) => Math.min(Infinity, ...upper.map((enemy) => Math.abs(enemy.anchorX - x)));
+  const candidates = Array.from({ length: 4 }, () => 60 + random() * (WORLD.width - 120));
+  const anchorX = candidates.reduce((best, x) => (clearance(x) > clearance(best) ? x : best));
+  const speed = RULES.speedMin + random() * RULES.speedRange;
   model.enemies.push({
     id: model.nextId++,
     x: anchorX,
@@ -144,7 +146,7 @@ const spawnEnemy = (model: GameModel, random: () => number) => {
 const splitEnemy = (model: GameModel, parent: Enemy) => {
   for (const direction of [-1, 1]) {
     const radius = RULES.splitRadius;
-    const anchorX = Math.max(radius, Math.min(WORLD.width - radius, parent.anchorX + direction * parent.radius * 0.5));
+    const anchorX = Math.max(radius, Math.min(WORLD.width - radius, parent.anchorX + direction * (radius + 6)));
     model.enemies.push({
       ...parent,
       id: model.nextId++,
@@ -154,7 +156,6 @@ const splitEnemy = (model: GameModel, parent: Enemy) => {
       maxHp: 1,
       radius,
       sides: Math.max(3, parent.sides - 1),
-      phase: parent.phase + direction,
       hitFlash: 0,
       vx: direction * RULES.splitSpeedX,
       vy: -RULES.splitHop
