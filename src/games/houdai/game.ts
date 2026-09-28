@@ -71,7 +71,7 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
 
   const addEffect = (event: GameEvent) => {
     const color = event.kind === 'heal' ? 0x6fa58c : PALETTES[event.palette][0];
-    const count = event.kind === 'hit' ? 3 : 15;
+    const count = event.kind === 'hit' ? 3 : event.kind === 'split' ? 8 : 15;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 35 + Math.random() * 135;
@@ -87,7 +87,7 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
         size: event.kind === 'hit' ? 2 : 3 + Math.random() * 5
       });
     }
-    if (event.kind === 'hit') return;
+    if (event.kind === 'hit' || event.kind === 'split') return;
     if (event.kind === 'damage') damageFlash = 0.3;
     const content =
       event.kind === 'destroy'
@@ -115,30 +115,36 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
       x: 67,
       y: 229,
       anchorX: 67,
-      hp: 28,
-      maxHp: 28,
-      radius: 36,
+      hp: 5,
+      maxHp: 5,
+      radius: 34,
       speed: 0,
       phase: 0,
       rotation: 0.3,
       sides: 6,
       palette: 0,
-      hitFlash: 0
+      hitFlash: 0,
+      vx: 0,
+      vy: 0,
+      reward: 0
     },
     {
       id: -2,
       x: 322,
       y: 398,
       anchorX: 322,
-      hp: 42,
-      maxHp: 42,
-      radius: 31,
+      hp: 3,
+      maxHp: 3,
+      radius: 32,
       speed: 0,
       phase: 2,
       rotation: 0,
       sides: 5,
       palette: 2,
-      hitFlash: 0
+      hitFlash: 0,
+      vx: 0,
+      vy: 0,
+      reward: 0
     }
   ];
 
@@ -163,7 +169,10 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
           .setDepth(3);
         labels.set(enemy.id, label);
       }
-      label.setPosition(enemy.x, enemy.y).setText(String(enemy.hp));
+      label
+        .setPosition(enemy.x, enemy.y)
+        .setText(String(enemy.hp))
+        .setFontSize(Math.round(enemy.radius * 0.8));
     }
   };
 

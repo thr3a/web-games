@@ -3,13 +3,23 @@ export const WORLD = { width: 390, height: 780, cannonY: 678, dangerY: 674 };
 export const RULES = {
   maxHp: 100,
   missDamage: 25,
+  splitMissDamage: 10,
   coinHealing: 8,
   coinChance: 0.35,
   shotInterval: 0.12,
   bulletSpeed: 760,
   spawnInterval: 2.8,
-  maxEnemies: 2
+  maxEnemies: 2,
+  enemyMinHp: 3,
+  enemyHpRange: 6,
+  splitRadius: 22,
+  splitSpeedX: 75,
+  splitHop: 150,
+  coinGravity: 620,
+  coinBounces: 3
 };
+
+export const PALETTE_COUNT = 5;
 
 export type GameStatus = 'ready' | 'playing' | 'paused' | 'over';
 export type Enemy = {
@@ -26,11 +36,14 @@ export type Enemy = {
   sides: number;
   palette: number;
   hitFlash: number;
+  vx: number;
+  vy: number;
+  reward: number;
 };
 export type Bullet = { x: number; y: number };
-export type Coin = { x: number; y: number; age: number };
+export type Coin = { x: number; y: number; vx: number; vy: number; bounces: number };
 export type GameEvent = {
-  kind: 'hit' | 'destroy' | 'damage' | 'heal';
+  kind: 'hit' | 'split' | 'destroy' | 'damage' | 'heal';
   x: number;
   y: number;
   palette: number;
@@ -99,13 +112,14 @@ export const resumeModel = (model: GameModel) => {
 };
 
 const spawnEnemy = (model: GameModel, random: () => number) => {
-  const hp = 28 + Math.floor(random() * 33);
-  const radius = 31 + hp * 0.2;
+  const hp = RULES.enemyMinHp + Math.floor(random() * RULES.enemyHpRange);
+  const radius = 30 + hp * 0.8;
   let anchorX = 60 + random() * (WORLD.width - 120);
   const previous = model.enemies[0];
   if (previous && Math.abs(previous.anchorX - anchorX) < 110) {
     anchorX = previous.anchorX < WORLD.width / 2 ? 292 : 98;
   }
+  const speed = 62 + random() * 14;
   model.enemies.push({
     id: model.nextId++,
     x: anchorX,
@@ -114,13 +128,38 @@ const spawnEnemy = (model: GameModel, random: () => number) => {
     hp,
     maxHp: hp,
     radius,
-    speed: 62 + random() * 14,
+    speed,
     phase: random() * Math.PI * 2,
     rotation: random() * Math.PI,
     sides: 5 + Math.floor(random() * 3),
-    palette: Math.floor(random() * 5),
-    hitFlash: 0
+    palette: Math.floor(random() * PALETTE_COUNT),
+    hitFlash: 0,
+    vx: 0,
+    vy: speed,
+    reward: hp * 5
   });
+};
+
+// 「2」に命中したら、左右に跳ねる小さな「1」を2体生む。
+const splitEnemy = (model: GameModel, parent: Enemy) => {
+  for (const direction of [-1, 1]) {
+    const radius = RULES.splitRadius;
+    const anchorX = Math.max(radius, Math.min(WORLD.width - radius, parent.anchorX + direction * parent.radius * 0.5));
+    model.enemies.push({
+      ...parent,
+      id: model.nextId++,
+      anchorX,
+      x: anchorX,
+      hp: 1,
+      maxHp: 1,
+      radius,
+      sides: Math.max(3, parent.sides - 1),
+      phase: parent.phase + direction,
+      hitFlash: 0,
+      vx: direction * RULES.splitSpeedX,
+      vy: -RULES.splitHop
+    });
+  }
 };
 
 export const stepModel = (model: GameModel, dt: number, random: () => number = Math.random): GameEvent[] => {
@@ -143,7 +182,15 @@ export const stepModel = (model: GameModel, dt: number, random: () => number = M
   }
 
   for (const enemy of model.enemies) {
-    enemy.y += enemy.speed * dt;
+    enemy.vy += (enemy.speed - enemy.vy) * Math.min(1, dt * 3);
+    enemy.y += enemy.vy * dt;
+    enemy.vx *= Math.exp(-2.5 * dt);
+    enemy.anchorX += enemy.vx * dt;
+    const edge = enemy.radius + 18;
+    if (enemy.anchorX < edge || enemy.anchorX > WORLD.width - edge) {
+      enemy.anchorX = Math.max(edge, Math.min(WORLD.width - edge, enemy.anchorX));
+      enemy.vx = -enemy.vx;
+    }
     enemy.x = enemy.anchorX + Math.sin(model.elapsed * 1.15 + enemy.phase) * 18;
     enemy.rotation += dt * 0.22;
     enemy.hitFlash = Math.max(0, enemy.hitFlash - dt);
@@ -165,15 +212,22 @@ export const stepModel = (model: GameModel, dt: number, random: () => number = M
     bullet.y = -100;
     target.hp -= 1;
     target.hitFlash = 0.065;
+    target.palette = (target.palette + 1) % PALETTE_COUNT;
     events.push({ kind: 'hit', x: bullet.x, y: target.y + target.radius / 2, palette: target.palette, value: 1 });
-    if (target.hp > 0) continue;
+    if (target.hp > 1) continue;
 
-    const points = target.maxHp * 10;
-    model.score += points;
+    if (target.hp === 1) {
+      target.hp = 0;
+      splitEnemy(model, { ...target, hp: 1 });
+      events.push({ kind: 'split', x: target.x, y: target.y, palette: target.palette, value: 0 });
+      continue;
+    }
+
+    model.score += target.reward;
     model.kills += 1;
-    events.push({ kind: 'destroy', x: target.x, y: target.y, palette: target.palette, value: points });
+    events.push({ kind: 'destroy', x: target.x, y: target.y, palette: target.palette, value: target.reward });
     if (random() < RULES.coinChance) {
-      model.drops.push({ x: target.x, y: target.y, age: 0 });
+      model.drops.push({ x: target.x, y: target.y, vx: (random() - 0.5) * 120, vy: -180, bounces: 0 });
     }
   }
   model.bullets = model.bullets.filter((bullet) => bullet.y > 100);
@@ -181,8 +235,9 @@ export const stepModel = (model: GameModel, dt: number, random: () => number = M
   for (const enemy of model.enemies) {
     if (enemy.hp <= 0 || enemy.y + enemy.radius < WORLD.dangerY) continue;
     enemy.hp = 0;
-    model.hp = Math.max(0, model.hp - RULES.missDamage);
-    events.push({ kind: 'damage', x: enemy.x, y: WORLD.dangerY, palette: enemy.palette, value: RULES.missDamage });
+    const damage = enemy.maxHp === 1 ? RULES.splitMissDamage : RULES.missDamage;
+    model.hp = Math.max(0, model.hp - damage);
+    events.push({ kind: 'damage', x: enemy.x, y: WORLD.dangerY, palette: enemy.palette, value: damage });
     if (model.hp > 0) continue;
 
     model.status = 'over';
@@ -193,16 +248,30 @@ export const stepModel = (model: GameModel, dt: number, random: () => number = M
   model.enemies = model.enemies.filter((enemy) => enemy.hp > 0);
   if (model.status === 'over') return events;
 
+  const collected: Coin[] = [];
   for (const coin of model.drops) {
-    coin.age += dt;
-    coin.y += (120 + coin.age * 220) * dt;
-    coin.x += (model.cannonX - coin.x) * Math.min(1, dt * 4);
-    if (coin.y < WORLD.cannonY - 12) continue;
+    coin.vy += RULES.coinGravity * dt;
+    coin.x += coin.vx * dt;
+    coin.y += coin.vy * dt;
+    if (coin.x < 14 || coin.x > WORLD.width - 14) {
+      coin.x = Math.max(14, Math.min(WORLD.width - 14, coin.x));
+      coin.vx = -coin.vx;
+    }
+    const ground = WORLD.cannonY + 4;
+    if (coin.y >= ground) {
+      coin.y = ground;
+      coin.vy = -Math.abs(coin.vy) * 0.55;
+      coin.bounces += 1;
+    }
+    // 砲台に触れるか、跳ね終わったら自動で取得する。
+    const touching = Math.abs(coin.x - model.cannonX) < 40 && coin.y > WORLD.cannonY - 70;
+    if (!touching && coin.bounces < RULES.coinBounces) continue;
+    collected.push(coin);
     model.coins += 1;
     const healing = Math.min(RULES.coinHealing, RULES.maxHp - model.hp);
     model.hp += healing;
-    events.push({ kind: 'heal', x: model.cannonX, y: WORLD.cannonY - 56, palette: 0, value: healing });
+    events.push({ kind: 'heal', x: coin.x, y: WORLD.cannonY - 56, palette: 0, value: healing });
   }
-  model.drops = model.drops.filter((coin) => coin.y < WORLD.cannonY - 12);
+  model.drops = model.drops.filter((coin) => !collected.includes(coin));
   return events;
 };
