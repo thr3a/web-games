@@ -11,6 +11,7 @@
     "serve": "python -m http.server -d dist"
   },
   "dependencies": {
+    "phaser": "^4.2.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4",
