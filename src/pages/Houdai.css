@@ -1,0 +1,529 @@
+.houdai-page {
+	min-height: 100dvh;
+	display: grid;
+	place-items: center;
+	background: #d5e2d8;
+	color: #2d403a;
+	padding: env(safe-area-inset-top) env(safe-area-inset-right)
+		env(safe-area-inset-bottom) env(safe-area-inset-left);
+	font-family:
+		"Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans",
+		Meiryo, sans-serif;
+	overscroll-behavior: none;
+	touch-action: none;
+	user-select: none;
+	-webkit-user-select: none;
+	-webkit-touch-callout: none;
+}
+
+.houdai-frame {
+	position: relative;
+	width: min(
+		100%,
+		460px,
+		calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2)
+	);
+	aspect-ratio: 1 / 2;
+	overflow: hidden;
+	container-type: inline-size;
+	background: #e4f0e9;
+	box-shadow: 0 24px 90px #304c3720;
+}
+
+.houdai-canvas {
+	position: absolute;
+	inset: 0;
+}
+
+.houdai-canvas canvas {
+	display: block;
+}
+
+.houdai-frame button {
+	font: inherit;
+	-webkit-tap-highlight-color: transparent;
+	cursor: pointer;
+	touch-action: manipulation;
+}
+
+.houdai-frame button:focus-visible {
+	outline: 3px solid #385e53;
+	outline-offset: 4px;
+}
+
+.houdai-frame button:disabled {
+	cursor: default;
+	opacity: 0.4;
+}
+
+.houdai-frame svg {
+	width: 5cqw;
+	height: 5cqw;
+	flex-shrink: 0;
+}
+
+.houdai-hud {
+	position: absolute;
+	inset: 0 0 auto;
+	padding: 5cqw 6cqw 6cqw;
+	background: linear-gradient(#e4f0e9 78%, #e4f0e900);
+	pointer-events: none;
+	z-index: 2;
+}
+
+.houdai-brand-row,
+.houdai-score-row,
+.houdai-hud-actions,
+.houdai-health,
+.houdai-best,
+.houdai-coin-count {
+	display: flex;
+	align-items: center;
+}
+
+.houdai-brand-row,
+.houdai-score-row {
+	justify-content: space-between;
+}
+
+.houdai-wordmark {
+	display: inline-flex;
+	align-items: center;
+	gap: 1.3cqw;
+	font-size: 3.5cqw;
+	font-weight: 900;
+	letter-spacing: 0.05em;
+}
+
+.houdai-brand-mark {
+	width: 2.7cqw;
+	height: 3.5cqw;
+	background: #354b42;
+	clip-path: polygon(
+		28% 0,
+		72% 0,
+		72% 55%,
+		100% 70%,
+		100% 100%,
+		0 100%,
+		0 70%,
+		28% 55%
+	);
+}
+
+.houdai-brand-dot {
+	align-self: start;
+	font-size: 1.8cqw;
+}
+
+.houdai-mode {
+	display: flex;
+	align-items: center;
+	gap: 1.5cqw;
+	font-size: 2cqw;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	color: #648176;
+}
+
+.houdai-mode > span {
+	width: 1.2cqw;
+	height: 1.2cqw;
+	border-radius: 50%;
+	background: #739881;
+}
+
+.houdai-score-row {
+	margin-top: 5cqw;
+}
+
+.houdai-score {
+	display: flex;
+	flex-direction: column;
+}
+
+.houdai-label {
+	color: #637d70;
+	font-size: 2.4cqw;
+	font-weight: 600;
+	letter-spacing: 0.13em;
+}
+
+.houdai-score > strong {
+	font-size: 9cqw;
+	font-weight: 800;
+	letter-spacing: -0.045em;
+	line-height: 1.25;
+	font-variant-numeric: tabular-nums;
+}
+
+.houdai-hud-actions {
+	gap: 2.5cqw;
+}
+
+.houdai-coin-count {
+	gap: 2cqw;
+	min-width: 18cqw;
+	height: 10cqw;
+	padding: 0 3cqw;
+	border: 1px solid #c3d5c5;
+	border-radius: 6cqw;
+	background: #ffffff30;
+	font-size: 4cqw;
+}
+
+.houdai-coin-icon,
+.houdai-small-coin {
+	display: inline-grid;
+	place-items: center;
+	width: 5.5cqw;
+	height: 5.5cqw;
+	border: 1.5px solid #b99343;
+	border-radius: 50%;
+	background: #f5d681;
+	box-shadow: inset 0 0 0 2px #ffedb4;
+	font-size: 3cqw;
+	font-weight: 800;
+	color: #a67a2d;
+}
+
+.houdai-pause {
+	display: grid;
+	place-items: center;
+	width: 11.3cqw;
+	height: 11.3cqw;
+	border: 1px solid #baccbf;
+	border-radius: 50%;
+	background: #ffffff38;
+	color: #3b5949;
+	pointer-events: auto;
+}
+
+.houdai-health {
+	gap: 2cqw;
+	margin-top: 3cqw;
+	color: #628f75;
+}
+
+.houdai-health > svg {
+	width: 3.4cqw;
+	height: 3.4cqw;
+	fill: currentColor;
+	stroke-width: 0;
+}
+
+.houdai-health-track {
+	flex: 1;
+	height: 1.6cqw;
+	border-radius: 2cqw;
+	background: #c9d9cc;
+	overflow: hidden;
+}
+
+.houdai-health-track > span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: currentColor;
+	transition: width 0.25s ease;
+}
+
+.houdai-health-number {
+	font-size: 2.7cqw;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.houdai-health-number > span {
+	font-weight: 400;
+	color: #83988a;
+}
+
+.houdai-health-low {
+	color: #cb6d5e;
+}
+
+.houdai-welcome {
+	position: absolute;
+	top: 32%;
+	left: 9%;
+	width: 82%;
+	text-align: center;
+}
+
+.houdai-eyebrow {
+	display: block;
+	font-size: 3cqw;
+	font-weight: 700;
+	letter-spacing: 0.22em;
+	color: #667f6d;
+}
+
+.houdai-welcome h1 {
+	margin: 2cqw 0 5cqw;
+	font-size: 15cqw;
+	font-weight: 900;
+	letter-spacing: -0.065em;
+	line-height: 1.05;
+}
+
+.houdai-subtitle {
+	display: block;
+	margin-top: 3cqw;
+	font-size: 3.8cqw;
+	letter-spacing: 0.18em;
+	font-weight: 600;
+}
+
+.houdai-intro {
+	margin: 0 0 7cqw;
+	font-size: 2.9cqw;
+	line-height: 2;
+	color: #667b68;
+}
+
+.houdai-primary {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 3cqw;
+	width: 100%;
+	min-height: 14cqw;
+	padding: 3.5cqw 5cqw;
+	border: 1px solid #bd6851;
+	border-radius: 3cqw;
+	background: #df8064;
+	box-shadow:
+		0 1cqw 0 #bc664f,
+		0 2cqw 4cqw #ab71551a;
+	color: #fffcf2;
+	font-size: 3.8cqw;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	transition:
+		transform 0.15s ease,
+		box-shadow 0.15s ease;
+}
+
+.houdai-primary > span {
+	flex: 1;
+}
+
+.houdai-primary:active {
+	transform: translateY(0.6cqw);
+	box-shadow: 0 0.4cqw 0 #bc664f;
+}
+
+.houdai-best {
+	justify-content: center;
+	gap: 2cqw;
+	margin-top: 6cqw;
+	color: #657a65;
+	font-size: 2.7cqw;
+}
+
+.houdai-best svg {
+	width: 3.5cqw;
+	height: 3.5cqw;
+}
+
+.houdai-best strong {
+	font-size: 3.5cqw;
+	font-variant-numeric: tabular-nums;
+}
+
+.houdai-footer {
+	position: absolute;
+	bottom: 3.4%;
+	left: 0;
+	width: 100%;
+	text-align: center;
+	pointer-events: none;
+	color: #746d4e;
+}
+
+.houdai-drag-hint {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4cqw;
+}
+
+.houdai-drag-hint > span {
+	width: 15cqw;
+	height: 1px;
+	background: #b5a98280;
+}
+
+.houdai-drag-hint svg {
+	width: 5.5cqw;
+	height: 5.5cqw;
+}
+
+.houdai-footer p {
+	font-size: 2.6cqw;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	margin: 1cqw 0 2cqw;
+}
+
+.houdai-heal-hint {
+	display: inline-flex;
+	align-items: center;
+	gap: 1cqw;
+	font-size: 2.3cqw;
+	color: #8f825d;
+}
+
+.houdai-small-coin {
+	width: 3cqw;
+	height: 3cqw;
+	font-size: 1.7cqw;
+	box-shadow: none;
+	border-width: 1px;
+}
+
+.houdai-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	display: grid;
+	place-items: center;
+	background: #33473c38;
+	backdrop-filter: blur(5px);
+}
+
+.houdai-result {
+	width: 86%;
+	padding: 7cqw 6cqw;
+	border: 1px solid #fff9e9;
+	border-radius: 6cqw;
+	background: #fff9ec;
+	box-shadow: 0 5cqw 15cqw #314a3826;
+	text-align: center;
+}
+
+.houdai-result-symbol {
+	display: grid;
+	place-items: center;
+	width: 13cqw;
+	height: 13cqw;
+	margin: 0 auto 5cqw;
+	border: 1px solid #dbc890;
+	border-radius: 50%;
+	background: #f8e9b9;
+	color: #937b41;
+}
+
+.houdai-result-symbol svg {
+	width: 6cqw;
+	height: 6cqw;
+}
+
+.houdai-result h2 {
+	margin: 3cqw 0 6cqw;
+	font-size: 5.1cqw;
+	letter-spacing: 0.02em;
+}
+
+.houdai-result-score {
+	display: flex;
+	flex-direction: column;
+	gap: 1cqw;
+}
+
+.houdai-result-score strong {
+	font-size: 14cqw;
+	letter-spacing: -0.05em;
+	font-variant-numeric: tabular-nums;
+}
+
+.houdai-result-stats {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	padding: 5cqw 0;
+	margin-top: 3cqw;
+	border-block: 1px solid #dfdec7;
+}
+
+.houdai-result-stats > div {
+	display: flex;
+	flex-direction: column;
+	gap: 2cqw;
+}
+
+.houdai-result-stats > div + div {
+	border-left: 1px solid #dfdec7;
+}
+
+.houdai-result-stats span {
+	font-size: 2.5cqw;
+	color: #78816a;
+}
+
+.houdai-result-stats strong {
+	font-size: 4.5cqw;
+}
+
+.houdai-result-stats small {
+	font-size: 2.5cqw;
+	font-weight: 400;
+}
+
+.houdai-result .houdai-best {
+	margin: 5cqw 0 6cqw;
+}
+
+.houdai-text-button {
+	margin-top: 5cqw;
+	min-height: 10cqw;
+	border: 0;
+	background: transparent;
+	font-size: 3cqw;
+	color: #7b826e;
+	text-decoration: underline;
+	text-underline-offset: 4px;
+}
+
+.houdai-rotate {
+	display: none;
+}
+
+.houdai-visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	clip-path: inset(50%);
+	overflow: hidden;
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+	.houdai-rotate {
+		position: fixed;
+		inset: 0;
+		z-index: 10;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		background: #e4f0e9;
+		gap: 16px;
+	}
+
+	.houdai-rotate > svg {
+		width: 44px;
+		height: 44px;
+	}
+
+	.houdai-rotate > p {
+		margin: 0;
+		font-size: 13px;
+		color: #667f6d;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.houdai-frame * {
+		transition: none;
+	}
+}
