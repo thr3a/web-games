@@ -1,14 +1,8 @@
-import { Container, Title } from '@mantine/core';
-
 export default function About() {
   return (
-    <Container>
-      <Title mt={'sm'} order={2}>
-        Aboutページ
-      </Title>
-      <Title order={6} mb={'sm'} c={'dimmed'}>
-        これはAboutページです。
-      </Title>
-    </Container>
+    <div>
+      <h2 style={{ marginTop: 16 }}>Aboutページ</h2>
+      <h6 style={{ marginBottom: 16, color: '#868e96' }}>これはAboutページです。</h6>
+    </div>
   );
 }

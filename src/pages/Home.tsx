@@ -1,14 +1,8 @@
-import { Container, Title } from '@mantine/core';
-
 export default function Home() {
   return (
-    <Container maw={400}>
-      <Title mt={'sm'} order={2}>
-        Mantine Vite template
-      </Title>
-      <Title order={6} mb={'sm'} c={'dimmed'}>
-        Mantine Vite template
-      </Title>
-    </Container>
+    <div style={{ maxWidth: 400, margin: '0 auto' }}>
+      <h2 style={{ marginTop: 16 }}>Vite React template</h2>
+      <h6 style={{ marginBottom: 16, color: '#868e96' }}>Vite React template</h6>
+    </div>
   );
 }

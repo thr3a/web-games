@@ -7,8 +7,7 @@
 ライブラリ概要
 
 - 言語: TypeScript
-- UI: React v19 / Mantine v9
-- hook: Mantine の hook を使用
+- UI: React v19
 - Lint: biome v2
 - ルーティング: react-router-dom（`BrowserRouter` + `Routes` + `Route`）を使用。ルート定義は `src/App.tsx`
 - ビルドはvite v8
@@ -22,26 +21,3 @@
 - 関数定義は すべてアロー関数 を使用する。
 - 条件分岐は 早期リターンを用いてフラットに保つ。
 - `try-catch` は乱用せず、必要最低限のみ使用する。
-
-# 3. Mantine / スタイリング関連ルール
-
-- 可能な限り、Mantine が提供する hook を優先的に利用する。
-- `tsx` でスタイルを指定する際は、まず Mantine の Style props を使う。
-  - Style props で表現できない場合のみ、`style` プロパティを使う。
-- 例：
-
-```tsx
-// Style props を使う例
-<Box mx="auto" maw={400} c="blue.6" bg="#fff">
-</Box>
-
-// Style props になく whiteSpace を指定したい場合は style を使う
-<Text style={{ whiteSpace: 'nowrap' }}>
-</Text>
-```
-
-- Radius、borderRadius などの丸みは、特別な指示がない限り設定しない。
-- Mantine の Style props（`mb`, `py`, `fz` など）でサイズ指定をする場合は、可能な限り `xs`, `sm`, `md`, `lg`, `xl` のプリセットサイズを使う。例：`<Text size="sm">`
-- 縦方向に要素が連続する場合、個々に `mb` を多用せず、基本的に `<Stack>` を使って縦間隔を調整する。
-- 文字の太さ（`fw`）は `"bold"` のみ使用可能。数値（`400`, `700` など）は使用しない。
-- Mantineのpropsについては mantine-style-props skillsを参照、 Mantineで指定可能な色は mantine-colors skillsを参照せよ。
