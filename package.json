@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc && vite build",
-    "test": "node --import tsx --test tests/*.test.ts",
+    "test": "vitest run",
     "lint": "biome check --write --unsafe ./src && npx tsc --noEmit",
     "preview": "vite preview",
     "serve": "python -m http.server -d dist"
@@ -24,6 +24,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^7.0.2",
-    "vite": "^8.3.1"
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
   }
 }

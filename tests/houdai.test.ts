@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { expect, test } from 'vitest';
 import {
   createModel,
   type Enemy,
@@ -44,24 +43,24 @@ const advance = (model: ReturnType<typeof createModel>, seconds: number) => {
 test('押している間だけ連射し、指を離すと新しい弾を発射しない', () => {
   const model = playing();
   advance(model, 0.2);
-  assert.equal(model.bullets.length, 0);
+  expect(model.bullets.length).toBe(0);
   model.firing = true;
   advance(model, 0.5);
-  assert.equal(model.bullets.length, 5);
+  expect(model.bullets.length).toBe(5);
   model.firing = false;
   advance(model, 1);
-  assert.equal(model.bullets.length, 0);
-  assert.equal(model.hp, RULES.maxHp);
+  expect(model.bullets.length).toBe(0);
+  expect(model.hp).toBe(RULES.maxHp);
 });
 
 test('砲台は指の横位置に追従し、画面の外には移動しない', () => {
   const model = playing();
   moveCannon(model, -100);
   advance(model, 1);
-  assert.ok(Math.abs(model.cannonX - 30) < 0.01);
+  expect(Math.abs(model.cannonX - 30)).toBeLessThan(0.01);
   moveCannon(model, 1000);
   advance(model, 1);
-  assert.ok(Math.abs(model.cannonX - (WORLD.width - 30)) < 0.01);
+  expect(Math.abs(model.cannonX - (WORLD.width - 30))).toBeLessThan(0.01);
 });
 
 test('1発の命中でHPが1だけ減り、撃破前は加点しない', () => {
@@ -69,9 +68,9 @@ test('1発の命中でHPが1だけ減り、撃破前は加点しない', () => {
   model.enemies = [enemyAt(3)];
   model.bullets = [{ x: 195, y: 335 }];
   stepModel(model, 1 / 120);
-  assert.equal(model.enemies[0].hp, 2);
-  assert.equal(model.score, 0);
-  assert.equal(model.bullets.length, 0);
+  expect(model.enemies[0].hp).toBe(2);
+  expect(model.score).toBe(0);
+  expect(model.bullets.length).toBe(0);
 });
 
 test('命中するたびに色が変わる', () => {
@@ -79,7 +78,7 @@ test('命中するたびに色が変わる', () => {
   model.enemies = [enemyAt(5)];
   model.bullets = [{ x: 195, y: 335 }];
   stepModel(model, 1 / 120);
-  assert.equal(model.enemies[0].palette, 1);
+  expect(model.enemies[0].palette).toBe(1);
 });
 
 test('「2」に命中すると、小さい「1」の2体に分裂し、この時点では加点しない', () => {
@@ -88,28 +87,25 @@ test('「2」に命中すると、小さい「1」の2体に分裂し、この�
   model.nextId = 10;
   model.bullets = [{ x: 195, y: 335 }];
   const events = stepModel(model, 1 / 120);
-  assert.equal(model.enemies.length, 2);
-  assert.deepEqual(
-    model.enemies.map((enemy) => [enemy.hp, enemy.maxHp, enemy.id]),
-    [
-      [1, 1, 10],
-      [1, 1, 11]
-    ]
-  );
-  assert.ok(model.enemies.every((enemy) => enemy.radius < 40 && enemy.reward === 10));
-  assert.ok(model.enemies[0].vx < 0 && model.enemies[1].vx > 0);
-  assert.equal(model.bullets.length, 0);
-  assert.equal(model.score, 0);
-  assert.equal(model.kills, 0);
-  assert.equal(events.filter((event) => event.kind === 'split').length, 1);
+  expect(model.enemies.length).toBe(2);
+  expect(model.enemies.map((enemy) => [enemy.hp, enemy.maxHp, enemy.id])).toEqual([
+    [1, 1, 10],
+    [1, 1, 11]
+  ]);
+  expect(model.enemies.every((enemy) => enemy.radius < 40 && enemy.reward === 10)).toBe(true);
+  expect(model.enemies[0].vx < 0 && model.enemies[1].vx > 0).toBe(true);
+  expect(model.bullets.length).toBe(0);
+  expect(model.score).toBe(0);
+  expect(model.kills).toBe(0);
+  expect(events.filter((event) => event.kind === 'split').length).toBe(1);
 });
 
 test('分裂した「1」が見逃されたときは、通常より少ないダメージを受ける', () => {
   const model = playing();
   model.enemies = [{ ...enemyAt(1, WORLD.dangerY), maxHp: 1 }];
   stepModel(model, 1 / 120);
-  assert.equal(model.hp, RULES.maxHp - RULES.splitMissDamage);
-  assert.equal(model.enemies.length, 0);
+  expect(model.hp).toBe(RULES.maxHp - RULES.splitMissDamage);
+  expect(model.enemies.length).toBe(0);
 });
 
 test('落ちてきたコインに砲台が触れると、跳ね終わる前でも取得できる', () => {
@@ -117,9 +113,9 @@ test('落ちてきたコインに砲台が触れると、跳ね終わる前で�
   model.hp = 50;
   model.drops = [{ x: 195, y: WORLD.cannonY - 100, vx: 0, vy: 0, bounces: 0 }];
   advance(model, 0.5);
-  assert.equal(model.drops.length, 0);
-  assert.equal(model.coins, 1);
-  assert.equal(model.hp, 50 + RULES.coinHealing);
+  expect(model.drops.length).toBe(0);
+  expect(model.coins).toBe(1);
+  expect(model.hp).toBe(50 + RULES.coinHealing);
 });
 
 test('弾が1フレームで敵を横切っても、手前の敵に一度だけ命中する', () => {
@@ -127,10 +123,7 @@ test('弾が1フレームで敵を横切っても、手前の敵に一度だけ�
   model.enemies = [enemyAt(5, 200), { ...enemyAt(5, 400), id: 2 }];
   model.bullets = [{ x: 195, y: 500 }];
   stepModel(model, 0.5);
-  assert.deepEqual(
-    model.enemies.map((enemy) => enemy.hp),
-    [5, 4]
-  );
+  expect(model.enemies.map((enemy) => enemy.hp)).toEqual([5, 4]);
 });
 
 test('敵のHPが0になると消滅・加点し、コインを確率でドロップする', () => {
@@ -141,11 +134,11 @@ test('敵のHPが0になると消滅・加点し、コインを確率でドロ�
     { x: 195, y: 333 }
   ];
   const events = stepModel(model, 1 / 120, () => 0);
-  assert.equal(model.enemies.length, 0);
-  assert.equal(model.score, 10);
-  assert.equal(model.kills, 1);
-  assert.equal(model.drops.length, 1);
-  assert.equal(events.filter((event) => event.kind === 'destroy').length, 1);
+  expect(model.enemies.length).toBe(0);
+  expect(model.score).toBe(10);
+  expect(model.kills).toBe(1);
+  expect(model.drops.length).toBe(1);
+  expect(events.filter((event) => event.kind === 'destroy').length).toBe(1);
 });
 
 test('ドロップ確率に外れたときはコインを生成しない', () => {
@@ -153,7 +146,7 @@ test('ドロップ確率に外れたときはコインを生成しない', () =>
   model.enemies = [enemyAt(1)];
   model.bullets = [{ x: 195, y: 330 }];
   stepModel(model, 1 / 120, () => 0.99);
-  assert.equal(model.drops.length, 0);
+  expect(model.drops.length).toBe(0);
 });
 
 test('コインは跳ね終わると自動で取得され、HP上限を超えずに回復する', () => {
@@ -162,9 +155,9 @@ test('コインは跳ね終わると自動で取得され、HP上限を超えず
     model.hp = hp;
     model.drops = [{ x: 30, y: 250, vx: 0, vy: 0, bounces: 0 }];
     advance(model, 5);
-    assert.equal(model.drops.length, 0);
-    assert.equal(model.coins, 1);
-    assert.equal(model.hp, Math.min(RULES.maxHp, hp + RULES.coinHealing));
+    expect(model.drops.length).toBe(0);
+    expect(model.coins).toBe(1);
+    expect(model.hp).toBe(Math.min(RULES.maxHp, hp + RULES.coinHealing));
   }
 });
 
@@ -172,9 +165,9 @@ test('敵が砲台ラインに到達したときだけHPが減り、同じ敵の
   const model = playing();
   model.enemies = [enemyAt(40, WORLD.dangerY - 40)];
   advance(model, 1);
-  assert.equal(model.hp, 75);
-  assert.equal(model.enemies.length, 0);
-  assert.equal(model.score, 0);
+  expect(model.hp).toBe(75);
+  expect(model.enemies.length).toBe(0);
+  expect(model.score).toBe(0);
 });
 
 test('HPが0になるとゲームオーバーになり、同じフレームのコインで復活しない', () => {
@@ -184,13 +177,13 @@ test('HPが0になるとゲームオーバーになり、同じフレームの�
   model.enemies = [enemyAt(40, WORLD.dangerY)];
   model.drops = [{ x: 195, y: WORLD.cannonY, vx: 0, vy: 0, bounces: 0 }];
   stepModel(model, 1 / 120);
-  assert.equal(model.hp, 0);
-  assert.equal(model.status, 'over');
-  assert.equal(model.firing, false);
-  assert.equal(model.coins, 0);
+  expect(model.hp).toBe(0);
+  expect(model.status).toBe('over');
+  expect(model.firing).toBe(false);
+  expect(model.coins).toBe(0);
   const before = structuredClone(model);
   advance(model, 3);
-  assert.deepEqual(model, before);
+  expect(model).toEqual(before);
 });
 
 test('一時停止中は進行せず、再開しても指を押すまで発射しない', () => {
@@ -199,22 +192,22 @@ test('一時停止中は進行せず、再開しても指を押すまで発射�
   pauseModel(model);
   const before = structuredClone(model);
   advance(model, 10);
-  assert.deepEqual(model, before);
+  expect(model).toEqual(before);
   resumeModel(model);
   advance(model, 0.2);
-  assert.equal(model.status, 'playing');
-  assert.equal(model.firing, false);
-  assert.equal(model.bullets.length, 0);
+  expect(model.status).toBe('playing');
+  expect(model.firing).toBe(false);
+  expect(model.bullets.length).toBe(0);
 });
 
 test('開始待ち・ゲームオーバーから再開操作をしてもプレイ状態にしない', () => {
   const model = createModel();
   resumeModel(model);
-  assert.equal(model.status, 'ready');
+  expect(model.status).toBe('ready');
   model.status = 'over';
   pauseModel(model);
   resumeModel(model);
-  assert.equal(model.status, 'over');
+  expect(model.status).toBe('over');
 });
 
 test('時間が経過しても敵のHP・速度・出現間隔は変化せず、同時出現数は上限を超えない', () => {
@@ -225,13 +218,13 @@ test('時間が経過しても敵のHP・速度・出現間隔は変化せず、
   late.elapsed = 600;
   stepModel(early, 1 / 120, () => 0.5);
   stepModel(late, 1 / 120, () => 0.5);
-  assert.equal(early.enemies[0].maxHp, late.enemies[0].maxHp);
-  assert.equal(early.enemies[0].speed, late.enemies[0].speed);
-  assert.equal(early.spawnCooldown, late.spawnCooldown);
+  expect(early.enemies[0].maxHp).toBe(late.enemies[0].maxHp);
+  expect(early.enemies[0].speed).toBe(late.enemies[0].speed);
+  expect(early.spawnCooldown).toBe(late.spawnCooldown);
   for (let frame = 0; frame < 120 * 120; frame++) {
     early.hp = 100;
     stepModel(early, 1 / 120, () => 0.5);
-    assert.ok(early.enemies.length <= RULES.maxEnemies);
+    expect(early.enemies.length).toBeLessThanOrEqual(RULES.maxEnemies);
   }
 });
 
@@ -241,10 +234,10 @@ test('リトライ用のモデルはスコア・HP・弾・敵・タイマーを
   first.hp = 0;
   first.status = 'over';
   const next = createModel();
-  assert.equal(next.score, 0);
-  assert.equal(next.hp, 100);
-  assert.equal(next.elapsed, 0);
-  assert.equal(next.enemies.length, 0);
-  assert.equal(next.bullets.length, 0);
-  assert.notEqual(first.enemies, next.enemies);
+  expect(next.score).toBe(0);
+  expect(next.hp).toBe(100);
+  expect(next.elapsed).toBe(0);
+  expect(next.enemies.length).toBe(0);
+  expect(next.bullets.length).toBe(0);
+  expect(first.enemies).not.toBe(next.enemies);
 });
