@@ -10,8 +10,10 @@ export const COLORS = {
   pink: 0xff5a8a,
   skyTop: 0x4aa8f0,
   skyBottom: 0xb4ecfa,
-  hillBack: 0x7fdc8f,
-  hillFront: 0x3cc47c,
+  mountainFar: 0x4bbdc8,
+  mountainLight: 0x7ad3a2,
+  mountainShade: 0x5cbb8e,
+  mountainFront: 0x3fa98a,
   ground: 0xffe49a,
   sun: 0xffefb0
 };
@@ -102,13 +104,53 @@ export const drawSky = (graphics: Graphics) => {
   graphics.fillStyle(COLORS.sun).fillCircle(SUN.x, SUN.y, SUN.radius);
 };
 
-const hill = (graphics: Graphics, points: Point[], color: number) => {
+// 山は遠景なのでフチを付けず、頂上から裾へ引いた稜線で日向と日陰の 2 面に塗り分ける。
+const mountain = (graphics: Graphics, outline: Point[], ridge: Point[], shade: Point[]) => {
+  polygon(graphics, outline, COLORS.mountainLight);
+  polygon(graphics, [...ridge, ...shade], COLORS.mountainShade);
+};
+
+const drawMountains = (graphics: Graphics) => {
+  const base = WORLD.dangerY + 2;
   polygon(
     graphics,
-    points.map((point) => ({ x: point.x + 4, y: point.y + 5 })),
-    COLORS.ink
+    [
+      { x: 150, y: base },
+      { x: 212, y: 525 },
+      { x: 280, y: base }
+    ],
+    COLORS.mountainFar
   );
-  sticker(graphics, points, color);
+  const leftPeak = { x: 113, y: 470 };
+  mountain(
+    graphics,
+    [{ x: 0, y: 555 }, leftPeak, { x: 290, y: base }, { x: 0, y: base }],
+    [leftPeak, { x: 70, y: base }],
+    [
+      { x: 0, y: base },
+      { x: 0, y: 555 }
+    ]
+  );
+  const rightPeak = { x: 334, y: 500 };
+  mountain(
+    graphics,
+    [{ x: 200, y: base }, rightPeak, { x: WORLD.width, y: 530 }, { x: WORLD.width, y: base }],
+    [rightPeak, { x: 305, y: base }],
+    [{ x: 200, y: base }]
+  );
+  polygon(
+    graphics,
+    [
+      { x: 0, y: 622 },
+      { x: 139, y: 563 },
+      { x: 266, y: 618 },
+      { x: 355, y: 575 },
+      { x: WORLD.width, y: 582 },
+      { x: WORLD.width, y: base },
+      { x: 0, y: base }
+    ],
+    COLORS.mountainFront
+  );
 };
 
 export const drawLandscape = (graphics: Graphics, time: number) => {
@@ -128,38 +170,7 @@ export const drawLandscape = (graphics: Graphics, time: number) => {
     graphics.fillStyle(COLORS.paper).fillRect(x + 16, y + 1.5, 38, 8);
   }
   // 山は固定表示にする（動くのは雲だけ）。
-  for (let tile = -1; tile < 2; tile++) {
-    const x = tile * 500;
-    hill(
-      graphics,
-      [
-        { x, y: 620 },
-        { x: x + 105, y: 465 },
-        { x: x + 216, y: 583 },
-        { x: x + 335, y: 496 },
-        { x: x + 500, y: 605 },
-        { x: x + 500, y: 710 },
-        { x, y: 710 }
-      ],
-      COLORS.hillBack
-    );
-  }
-  for (let tile = -1; tile < 2; tile++) {
-    const x = tile * 500;
-    hill(
-      graphics,
-      [
-        { x, y: 644 },
-        { x: x + 140, y: 571 },
-        { x: x + 285, y: 647 },
-        { x: x + 404, y: 579 },
-        { x: x + 500, y: 639 },
-        { x: x + 500, y: 723 },
-        { x, y: 723 }
-      ],
-      COLORS.hillFront
-    );
-  }
+  drawMountains(graphics);
   graphics.fillStyle(COLORS.ground).fillRect(0, WORLD.dangerY, WORLD.width, WORLD.height - WORLD.dangerY);
   graphics.lineStyle(LINE, COLORS.ink).lineBetween(0, WORLD.dangerY, WORLD.width, WORLD.dangerY);
 };
