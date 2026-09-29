@@ -147,26 +147,6 @@ export const drawLandscape = (graphics: Graphics, time: number) => {
   }
   graphics.fillStyle(COLORS.ground).fillRect(0, WORLD.dangerY, WORLD.width, WORLD.height - WORLD.dangerY);
   graphics.lineStyle(LINE, COLORS.ink).lineBetween(0, WORLD.dangerY, WORLD.width, WORLD.dangerY);
-  sticker(
-    graphics,
-    [
-      { x: -10, y: 736 },
-      { x: 133, y: 705 },
-      { x: 258, y: 790 },
-      { x: -10, y: 790 }
-    ],
-    COLORS.yellow
-  );
-  sticker(
-    graphics,
-    [
-      { x: 270, y: 790 },
-      { x: 356, y: 711 },
-      { x: 400, y: 732 },
-      { x: 400, y: 790 }
-    ],
-    COLORS.cream
-  );
 };
 
 export const drawEnemy = (graphics: Graphics, enemy: Enemy) => {
