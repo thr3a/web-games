@@ -1,5 +1,5 @@
 // /houdai の難易度調整用に、ボットに大量のゲームを遊ばせて生存時間などを集計する。
-// 実行: node --import tsx ./src/scripts/houdai-sim.ts
+// 実行: node --import tsx ./src/scripts/houdaiSimulator.ts
 import { createModel, type Enemy, type GameModel, moveCannon, RULES, stepModel } from '../games/houdai/model';
 
 type Bot = {

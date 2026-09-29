@@ -12,18 +12,28 @@ export const RULES = {
   maxEnemies: 5,
   speedMin: 45,
   speedRange: 60,
-  enemyMinHp: 8,
-  enemyHpRange: 10,
+  enemyMinHp: 4,
+  enemyHpRange: 6,
   splitRadius: 22,
   splitSpeedX: 75,
   splitHop: 150,
   coinGravity: 620,
-  coinBounces: 3
+  coinBounces: 3,
+  // 60秒を3フェーズに区切り、フェーズが進むごとに敵の初期HP・同時出現数を引き上げる。
+  gameDuration: 60,
+  phaseDuration: 20,
+  hpStepPerPhase: 2,
+  hpRangeStepPerPhase: 1,
+  maxEnemiesStepPerPhase: 1
 };
 
 export const PALETTE_COUNT = 5;
 
-export type GameStatus = 'ready' | 'playing' | 'paused' | 'over';
+// 現在の経過時間（秒）から、0始まりのフェーズ番号を求める。
+export const getPhase = (elapsed: number): number =>
+  Math.min(Math.ceil(RULES.gameDuration / RULES.phaseDuration) - 1, Math.floor(elapsed / RULES.phaseDuration));
+
+export type GameStatus = 'ready' | 'playing' | 'paused' | 'over' | 'cleared';
 export type Enemy = {
   id: number;
   x: number;
@@ -68,7 +78,11 @@ export type GameModel = {
   bullets: Bullet[];
   drops: Coin[];
 };
-export type GameSnapshot = Pick<GameModel, 'status' | 'hp' | 'score' | 'coins' | 'kills' | 'elapsed'>;
+export type GameSnapshot = Pick<GameModel, 'status' | 'hp' | 'score' | 'coins' | 'kills' | 'elapsed'> & {
+  // 残り時間（秒）と、現在のフェーズ番号（0始まり）。HUD表示・演出に使う。
+  remaining: number;
+  phase: number;
+};
 
 export const createModel = (): GameModel => ({
   status: 'ready',
@@ -94,7 +108,9 @@ export const snapshot = (model: GameModel): GameSnapshot => ({
   score: model.score,
   coins: model.coins,
   kills: model.kills,
-  elapsed: Math.floor(model.elapsed)
+  elapsed: Math.floor(model.elapsed),
+  remaining: Math.max(0, Math.ceil(RULES.gameDuration - model.elapsed)),
+  phase: getPhase(model.elapsed)
 });
 
 export const moveCannon = (model: GameModel, x: number) => {
@@ -114,7 +130,10 @@ export const resumeModel = (model: GameModel) => {
 };
 
 const spawnEnemy = (model: GameModel, random: () => number) => {
-  const hp = RULES.enemyMinHp + Math.floor(random() * RULES.enemyHpRange);
+  const phase = getPhase(model.elapsed);
+  const minHp = RULES.enemyMinHp + phase * RULES.hpStepPerPhase;
+  const hpRange = RULES.enemyHpRange + phase * RULES.hpRangeStepPerPhase;
+  const hp = minHp + Math.floor(random() * hpRange);
   const radius = 30 + hp * 0.8;
   // 画面上部にいる敵となるべく重ならない位置を、いくつかの候補から選ぶ。
   const upper = model.enemies.filter((enemy) => enemy.y < 260);
@@ -170,7 +189,8 @@ export const stepModel = (model: GameModel, dt: number, random: () => number = M
   model.elapsed += dt;
   model.cannonX += (model.targetX - model.cannonX) * (1 - Math.exp(-22 * dt));
   model.spawnCooldown -= dt;
-  if (model.spawnCooldown <= 0 && model.enemies.length < RULES.maxEnemies) {
+  const maxEnemies = RULES.maxEnemies + getPhase(model.elapsed) * RULES.maxEnemiesStepPerPhase;
+  if (model.spawnCooldown <= 0 && model.enemies.length < maxEnemies) {
     spawnEnemy(model, random);
     model.spawnCooldown = RULES.spawnInterval;
   }
@@ -274,5 +294,11 @@ export const stepModel = (model: GameModel, dt: number, random: () => number = M
     events.push({ kind: 'heal', x: coin.x, y: WORLD.cannonY - 56, palette: 0, value: healing });
   }
   model.drops = model.drops.filter((coin) => !collected.includes(coin));
+
+  if (model.status === 'playing' && model.elapsed >= RULES.gameDuration) {
+    model.status = 'cleared';
+    model.firing = false;
+    model.bullets = [];
+  }
   return events;
 };

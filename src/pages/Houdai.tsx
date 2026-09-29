@@ -75,7 +75,7 @@ const Houdai = () => {
         if (disposed) return;
         setLoaded(true);
         setState(next);
-        if (next.status !== 'over' || next.score <= bestRef.current) return;
+        if ((next.status !== 'over' && next.status !== 'cleared') || next.score <= bestRef.current) return;
         bestRef.current = next.score;
         setBest(next.score);
         setNewRecord(true);
@@ -111,7 +111,10 @@ const Houdai = () => {
               <span className='houdai-brand-mark' /> HOUDAI<span className='houdai-brand-dot'>®</span>
             </span>
             <span className='houdai-mode'>
-              <span /> ENDLESS PLAY
+              <span />{' '}
+              {status === 'playing' || status === 'paused'
+                ? `PHASE ${state.phase + 1} · 残り ${formatTime(state.remaining)}`
+                : '60 SEC SURVIVAL'}
             </span>
           </div>
           <div className='houdai-score-row'>
@@ -178,16 +181,28 @@ const Houdai = () => {
           </div>
         )}
 
-        {(status === 'paused' || status === 'over') && (
+        {(status === 'paused' || status === 'over' || status === 'cleared') && (
           <div className='houdai-overlay'>
             <section className='houdai-result' role='dialog' aria-modal='true' aria-labelledby='houdai-dialog-title'>
               <span className='houdai-result-symbol'>
-                <Icon name={status === 'paused' ? 'pause' : 'trophy'} />
+                <Icon name={status === 'paused' ? 'pause' : status === 'cleared' ? 'trophy' : 'heart'} />
               </span>
               <span className='houdai-eyebrow'>
-                {status === 'paused' ? 'TAKE A BREATH' : newRecord ? 'NEW BEST!' : 'NICE TRY!'}
+                {status === 'paused'
+                  ? 'TAKE A BREATH'
+                  : status === 'cleared'
+                    ? newRecord
+                      ? 'NEW BEST!'
+                      : 'CLEAR!'
+                    : 'GAME OVER'}
               </span>
-              <h2 id='houdai-dialog-title'>{status === 'paused' ? 'ちょっと、ひと休み。' : 'もう一回、空へ。'}</h2>
+              <h2 id='houdai-dialog-title'>
+                {status === 'paused'
+                  ? 'ちょっと、ひと休み。'
+                  : status === 'cleared'
+                    ? '60秒、耐え切った。'
+                    : 'また挑戦しよう。'}
+              </h2>
               <div className='houdai-result-score'>
                 <span className='houdai-label'>今回のスコア</span>
                 <strong>{formatScore(state.score)}</strong>

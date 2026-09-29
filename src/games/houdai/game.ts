@@ -5,6 +5,7 @@ import {
   type Enemy,
   type GameEvent,
   type GameSnapshot,
+  getPhase,
   moveCannon,
   pauseModel,
   resumeModel,
@@ -12,6 +13,8 @@ import {
   stepModel,
   WORLD
 } from './model';
+
+const PHASE_LABELS = ['', 'PHASE 2 突入！', 'ラストスパート！'];
 
 type Effect = {
   x: number;
@@ -41,6 +44,8 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
   let accumulator = 0;
   let lastSnapshot = '';
   let damageFlash = 0;
+  let phaseFlash = 0;
+  let lastPhase = 0;
   let ready = false;
 
   const publish = () => {
@@ -212,6 +217,25 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
         for (const event of stepModel(model, 1 / 120)) addEffect(event);
         accumulator -= 1 / 120;
       }
+      if (model.status === 'playing') {
+        const phase = getPhase(model.elapsed);
+        if (phase !== lastPhase) {
+          lastPhase = phase;
+          phaseFlash = 0.35;
+          const object = scene.add
+            .text(WORLD.width / 2, WORLD.height * 0.34, PHASE_LABELS[phase] ?? '', {
+              fontFamily: 'Arial, sans-serif',
+              fontSize: '30px',
+              fontStyle: 'bold',
+              color: '#fff4d6',
+              stroke: '#8a5a2a',
+              strokeThickness: 6
+            })
+            .setOrigin(0.5)
+            .setDepth(6);
+          floatingTexts.push({ object, life: 1.2 });
+        }
+      }
       drawLandscape(landscape, elapsed);
       drawObjects(graphics, model, elapsed);
       if (model.status === 'ready') {
@@ -249,6 +273,10 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
       if (damageFlash > 0) {
         damageFlash -= dt;
         effectsGraphics.fillStyle(0xe77465, Math.max(0, damageFlash * 0.7)).fillRect(0, 0, WORLD.width, WORLD.height);
+      }
+      if (phaseFlash > 0) {
+        phaseFlash -= dt;
+        effectsGraphics.fillStyle(0xffe9a8, Math.max(0, phaseFlash * 0.6)).fillRect(0, 0, WORLD.width, WORLD.height);
       }
       publish();
     }
@@ -288,6 +316,8 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
       accumulator = 0;
       effects = [];
       damageFlash = 0;
+      phaseFlash = 0;
+      lastPhase = 0;
       for (const text of floatingTexts) text.object.destroy();
       floatingTexts = [];
       publish();

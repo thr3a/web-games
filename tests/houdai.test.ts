@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 import {
   createModel,
   type Enemy,
+  getPhase,
   moveCannon,
   pauseModel,
   RULES,
@@ -210,22 +211,37 @@ test('開始待ち・ゲームオーバーから再開操作をしてもプレ�
   expect(model.status).toBe('over');
 });
 
-test('時間が経過しても敵のHP・速度・出現間隔は変化せず、同時出現数は上限を超えない', () => {
+test('フェーズが進むと敵の初期HP・同時出現数の上限が引き上がる（速度や出現間隔は変わらない）', () => {
   const early = playing();
   const late = playing();
   early.spawnCooldown = 0;
   late.spawnCooldown = 0;
-  late.elapsed = 600;
+  late.elapsed = RULES.phaseDuration * 2;
   stepModel(early, 1 / 120, () => 0.5);
   stepModel(late, 1 / 120, () => 0.5);
-  expect(early.enemies[0].maxHp).toBe(late.enemies[0].maxHp);
-  expect(early.enemies[0].speed).toBe(late.enemies[0].speed);
+  expect(getPhase(early.elapsed)).toBe(0);
+  expect(getPhase(late.elapsed)).toBe(2);
+  expect(late.enemies[0].maxHp).toBeGreaterThan(early.enemies[0].maxHp);
+  expect(early.enemies[0].speed).toBeGreaterThanOrEqual(RULES.speedMin);
   expect(early.spawnCooldown).toBe(late.spawnCooldown);
-  for (let frame = 0; frame < 120 * 120; frame++) {
+  for (let frame = 0; frame < 120 * (RULES.phaseDuration * 3); frame++) {
     early.hp = 100;
     stepModel(early, 1 / 120, () => 0.5);
-    expect(early.enemies.length).toBeLessThanOrEqual(RULES.maxEnemies);
+    const maxEnemies = RULES.maxEnemies + getPhase(early.elapsed) * RULES.maxEnemiesStepPerPhase;
+    expect(early.enemies.length).toBeLessThanOrEqual(maxEnemies);
   }
+});
+
+test('60秒経過するとHPが残っていればクリアになり、以降は進行しない', () => {
+  const model = playing();
+  model.elapsed = RULES.gameDuration - 1 / 120;
+  stepModel(model, 1 / 120);
+  expect(model.status).toBe('cleared');
+  expect(model.firing).toBe(false);
+  expect(model.bullets.length).toBe(0);
+  const before = structuredClone(model);
+  for (let frame = 0; frame < 120; frame++) stepModel(model, 1 / 120);
+  expect(model).toEqual(before);
 });
 
 test('リトライ用のモデルはスコア・HP・弾・敵・タイマーを初期化する', () => {
