@@ -22,3 +22,25 @@
 - 関数定義は すべてアロー関数 を使用する。
 - 条件分岐は 早期リターンを用いてフラットに保つ。
 - `try-catch` は乱用せず、必要最低限のみ使用する。
+
+# 3. ブラウザでの動作確認（three.js / WebGL）
+
+three.js を使うページ（`/subway-rush` など）をヘッドレス Chrome で確認するときは、以下に従う。守らないと `THREE.WebGLRenderer: Error creating WebGL context.` で必ず失敗する。
+
+- **原因**: この環境には X11 転送用の `DISPLAY=localhost:10.0` が設定されている。Chrome が ANGLE/Vulkan の初期化で X に接続しようとして失敗し（`xcb_connect() failed`）、WebGL が無効になる。
+- **対処**: `DISPLAY` を外して起動し、`--use-angle=swiftshader --enable-unsafe-swiftshader` を付ける。サンドボックスを無効にする必要はない。
+- **やり方**: `playwright-cli open` の `--config` では起動引数が効かなかった。playwright-core を直接使う Node スクリプトをスクラッチパッドに置き、`env -u DISPLAY node shot.mjs` で実行する。
+
+```js
+import { chromium } from '/home/thr3a/.local/share/mise/installs/node/24.12.0/lib/node_modules/@playwright/cli/node_modules/playwright-core/index.mjs';
+const browser = await chromium.launch({
+  executablePath: '/usr/bin/google-chrome', // Playwright 同梱のブラウザはバージョンが合わず起動しない
+  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']
+});
+const page = await browser.newPage({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2 });
+await page.goto('http://localhost:5199/subway-rush');
+// WebGL が使えるかを最初に確認する
+console.log(await page.evaluate(() => !!document.createElement('canvas').getContext('webgl2')));
+```
+
+- 上の `console.log` が `false` なら、ゲームのコードより先に起動方法を疑う。
