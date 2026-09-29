@@ -1,17 +1,48 @@
 import type Phaser from 'phaser';
 import { type Enemy, type GameModel, RULES, WORLD } from './model';
 
+// DESIGN.md のカラートークンを Canvas 用に数値化したもの。
+export const COLORS = {
+  ink: 0x1f1a2e,
+  paper: 0xffffff,
+  cream: 0xfff6e8,
+  yellow: 0xfbcd3f,
+  pink: 0xff5a8a,
+  sky: 0x8fd8f5,
+  hillBack: 0x7fdc8f,
+  hillFront: 0x3cc47c,
+  ground: 0xffe49a,
+  sun: 0xffefb0
+};
+
+const SUN = { x: 302, y: 200, radius: 30 };
+
+// Phaser の Text 用（CSS カラー文字列）。
+export const TEXT_COLORS = {
+  ink: '#1f1a2e',
+  paper: '#ffffff',
+  yellow: '#fbcd3f',
+  pink: '#ff5a8a'
+};
+
+export const FONT_FAMILY =
+  '"Hiragino Maru Gothic ProN", "M PLUS Rounded 1c", "Arial Rounded MT Bold", "Hiragino Sans", Meiryo, sans-serif';
+
+// 各パレットは [地色, ハイライト, 影色]。被弾ごとに次のパレットへ切り替わる。
 export const PALETTES = [
-  [0xee826b, 0xffa38a, 0xd96759],
-  [0x5dafaa, 0x8accc0, 0x418e8e],
-  [0xa08ac3, 0xc0a8da, 0x826ca8],
-  [0xe9b64f, 0xffd678, 0xce973a],
-  [0x74a5ca, 0xa0cce5, 0x5789b1]
+  [0xff5a8a, 0xff9ab8, 0xe0457b],
+  [0x2ec4b6, 0x7fe6dc, 0x1fa396],
+  [0x9b6bff, 0xc3a6ff, 0x7c4ce0],
+  [0xfbcd3f, 0xffe58a, 0xe8a91c],
+  [0x3fa9ff, 0x8fcfff, 0x2585e0]
 ];
 
-type Graphics = Phaser.GameObjects.Graphics;
+const LINE = 4;
 
-const tracePolygon = (graphics: Graphics, points: { x: number; y: number }[]) => {
+type Graphics = Phaser.GameObjects.Graphics;
+type Point = { x: number; y: number };
+
+const tracePolygon = (graphics: Graphics, points: Point[]) => {
   const first = points[0];
   if (!first) return;
   graphics.beginPath();
@@ -20,20 +51,49 @@ const tracePolygon = (graphics: Graphics, points: { x: number; y: number }[]) =>
   graphics.closePath();
 };
 
-const polygon = (graphics: Graphics, points: { x: number; y: number }[], color: number, alpha = 1) => {
+const polygon = (graphics: Graphics, points: Point[], color: number, alpha = 1) => {
   graphics.fillStyle(color, alpha);
   tracePolygon(graphics, points);
   graphics.fillPath();
 };
 
+// ベタ塗り + 濃紺の太フチでシール風に描く。
+const sticker = (graphics: Graphics, points: Point[], color: number, line = LINE) => {
+  polygon(graphics, points, color);
+  graphics.lineStyle(line, COLORS.ink);
+  tracePolygon(graphics, points);
+  graphics.strokePath();
+};
+
+const stickerRect = (
+  graphics: Graphics,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  color: number
+) => {
+  graphics.fillStyle(color).fillRoundedRect(x, y, width, height, radius);
+  graphics.lineStyle(LINE, COLORS.ink).strokeRoundedRect(x, y, width, height, radius);
+};
+
 export const drawSky = (graphics: Graphics) => {
-  graphics.fillStyle(0xe4f0e9).fillRect(0, 0, WORLD.width, WORLD.height);
-  for (let i = 0; i < 45; i++) {
-    graphics.fillStyle(0xfff6df, i / 60).fillRect(0, 190 + i * 11, WORLD.width, 11);
+  graphics.fillStyle(COLORS.sky).fillRect(0, 0, WORLD.width, WORLD.height);
+  // 半透明の白い円を外側から重ね、太陽に近いほど明るくなる光のにじみを作る。
+  for (let i = 0; i < 12; i++) {
+    graphics.fillStyle(COLORS.paper, 0.05).fillCircle(SUN.x, SUN.y, SUN.radius + 36 - i * 3);
   }
-  graphics.fillStyle(0xfff8db, 0.55).fillCircle(302, 220, 66);
-  graphics.fillStyle(0xfff9e6).fillCircle(302, 220, 45);
-  graphics.lineStyle(1, 0xffffff, 0.5).strokeCircle(302, 220, 55);
+  graphics.fillStyle(COLORS.sun).fillCircle(SUN.x, SUN.y, SUN.radius);
+};
+
+const hill = (graphics: Graphics, points: Point[], color: number) => {
+  polygon(
+    graphics,
+    points.map((point) => ({ x: point.x + 4, y: point.y + 5 })),
+    COLORS.ink
+  );
+  sticker(graphics, points, color);
 };
 
 export const drawLandscape = (graphics: Graphics, time: number) => {
@@ -41,14 +101,21 @@ export const drawLandscape = (graphics: Graphics, time: number) => {
   for (let i = 0; i < 4; i++) {
     const x = ((i * 143 + time * 5) % 570) - 90;
     const y = 167 + (i % 3) * 108;
-    graphics.fillStyle(0xffffff, 0.43);
-    graphics.fillRoundedRect(x, y, 70, 10, 5);
-    graphics.fillRoundedRect(x + 18, y - 6, 34, 12, 6);
+    // 雲は 2 つの角丸を重ね、内側に入った線を白で塗りつぶして 1 つの輪郭に見せる。
+    graphics.fillStyle(COLORS.ink);
+    graphics.fillRoundedRect(x + 4, y + 4, 70, 14, 7);
+    graphics.fillRoundedRect(x + 22, y - 4, 34, 16, 8);
+    graphics.lineStyle(3, COLORS.ink);
+    graphics.fillStyle(COLORS.paper).fillRoundedRect(x, y, 70, 14, 7);
+    graphics.strokeRoundedRect(x, y, 70, 14, 7);
+    graphics.fillStyle(COLORS.paper).fillRoundedRect(x + 18, y - 8, 34, 16, 8);
+    graphics.strokeRoundedRect(x + 18, y - 8, 34, 16, 8);
+    graphics.fillStyle(COLORS.paper).fillRect(x + 16, y + 1.5, 38, 8);
   }
-  const offset = (time * 5) % 500;
+  // 山は固定表示にする（動くのは雲だけ）。
   for (let tile = -1; tile < 2; tile++) {
-    const x = tile * 500 - offset;
-    polygon(
+    const x = tile * 500;
+    hill(
       graphics,
       [
         { x, y: 620 },
@@ -59,27 +126,12 @@ export const drawLandscape = (graphics: Graphics, time: number) => {
         { x: x + 500, y: 710 },
         { x, y: 710 }
       ],
-      0xbcd5bf
+      COLORS.hillBack
     );
-    polygon(
-      graphics,
-      [
-        { x, y: 620 },
-        { x: x + 105, y: 465 },
-        { x: x + 126, y: 624 }
-      ],
-      0xd0dfc6
-    );
-    polygon(
-      graphics,
-      [
-        { x: x + 216, y: 583 },
-        { x: x + 335, y: 496 },
-        { x: x + 302, y: 647 }
-      ],
-      0xcbdcc3
-    );
-    polygon(
+  }
+  for (let tile = -1; tile < 2; tile++) {
+    const x = tile * 500;
+    hill(
       graphics,
       [
         { x, y: 644 },
@@ -90,56 +142,31 @@ export const drawLandscape = (graphics: Graphics, time: number) => {
         { x: x + 500, y: 723 },
         { x, y: 723 }
       ],
-      0x8ab8a3
-    );
-    polygon(
-      graphics,
-      [
-        { x, y: 644 },
-        { x: x + 140, y: 571 },
-        { x: x + 112, y: 699 }
-      ],
-      0xa9c8ae
-    );
-    polygon(
-      graphics,
-      [
-        { x: x + 285, y: 647 },
-        { x: x + 404, y: 579 },
-        { x: x + 447, y: 694 }
-      ],
-      0x9dc1a7
+      COLORS.hillFront
     );
   }
-  graphics.fillStyle(0xf1dfaf).fillRect(0, WORLD.dangerY, WORLD.width, WORLD.height - WORLD.dangerY);
-  graphics.fillStyle(0xf8e9c7).fillRect(0, WORLD.dangerY, WORLD.width, 8);
-  polygon(
+  graphics.fillStyle(COLORS.ground).fillRect(0, WORLD.dangerY, WORLD.width, WORLD.height - WORLD.dangerY);
+  graphics.lineStyle(LINE, COLORS.ink).lineBetween(0, WORLD.dangerY, WORLD.width, WORLD.dangerY);
+  sticker(
     graphics,
     [
-      { x: 0, y: 732 },
-      { x: 133, y: 695 },
-      { x: 258, y: 780 },
-      { x: 0, y: 780 }
+      { x: -10, y: 736 },
+      { x: 133, y: 705 },
+      { x: 258, y: 790 },
+      { x: -10, y: 790 }
     ],
-    0xeadaaa
+    COLORS.yellow
   );
-  polygon(
+  sticker(
     graphics,
     [
-      { x: 270, y: 780 },
-      { x: 356, y: 701 },
-      { x: 390, y: 722 },
-      { x: 390, y: 780 }
+      { x: 270, y: 790 },
+      { x: 356, y: 711 },
+      { x: 400, y: 732 },
+      { x: 400, y: 790 }
     ],
-    0xf6e5bd
+    COLORS.cream
   );
-  graphics.lineStyle(1.5, 0x4e7965, 0.3);
-  for (let x = 14; x < WORLD.width; x += 14) graphics.lineBetween(x, WORLD.dangerY, x + 5, WORLD.dangerY);
-  for (const x of [35, 94, 318, 361]) {
-    graphics.lineStyle(2, 0xafba8a, 0.7);
-    graphics.lineBetween(x, 690, x - 3, 684);
-    graphics.lineBetween(x, 690, x + 4, 682);
-  }
 };
 
 export const drawEnemy = (graphics: Graphics, enemy: Enemy) => {
@@ -150,68 +177,72 @@ export const drawEnemy = (graphics: Graphics, enemy: Enemy) => {
   });
   polygon(
     graphics,
-    points.map((point) => ({ x: point.x + 2, y: point.y + 5 })),
-    0x45645b,
-    0.12
+    points.map((point) => ({ x: point.x + 4, y: point.y + 6 })),
+    COLORS.ink
   );
   polygon(graphics, points, colors[0]);
+  // 下半分の辺に影色の面を重ねて、ベタ塗りのまま立体感を出す。
   for (let i = 0; i < points.length; i++) {
     const a = points[i];
     const b = points[(i + 1) % points.length];
-    graphics.fillStyle(colors[i % 3], 0.95);
-    graphics.fillTriangle(enemy.x - enemy.radius * 0.22, enemy.y - enemy.radius * 0.27, a.x, a.y, b.x, b.y);
+    if ((a.y + b.y) / 2 <= enemy.y) continue;
+    graphics.fillStyle(colors[2]);
+    graphics.fillTriangle(enemy.x, enemy.y, a.x, a.y, b.x, b.y);
   }
+  graphics
+    .fillStyle(colors[1])
+    .fillCircle(enemy.x - enemy.radius * 0.42, enemy.y - enemy.radius * 0.42, enemy.radius * 0.13);
+  graphics.lineStyle(LINE, COLORS.ink);
   tracePolygon(graphics, points);
-  graphics.lineStyle(1.5, 0xffffff, 0.27).strokePath();
-  if (enemy.hitFlash > 0) polygon(graphics, points, 0xffffff, 0.5);
+  graphics.strokePath();
+  if (enemy.hitFlash > 0) polygon(graphics, points, COLORS.paper, 0.6);
 };
 
 export const drawCannon = (graphics: Graphics, model: GameModel) => {
   const x = model.cannonX;
   const recoil = model.firing ? Math.max(0, model.shotCooldown / RULES.shotInterval - 0.5) * 9 : 0;
   const y = WORLD.cannonY + recoil;
-  graphics.fillStyle(0x4a5947, 0.16).fillEllipse(x + 2, WORLD.cannonY + 20, 93, 17);
-  graphics.fillStyle(0x252d30).fillRoundedRect(x - 16, y - 49, 32, 53, 5);
-  graphics.fillStyle(0x454f50).fillRect(x - 11, y - 43, 8, 31);
-  graphics.fillStyle(0x171f23).fillRoundedRect(x - 20, y - 53, 40, 12, 4);
-  graphics.fillStyle(0x5d6866).fillRect(x - 14, y - 50, 28, 3);
-  graphics.fillStyle(0x313b3d).fillRoundedRect(x - 29, y - 16, 58, 29, 11);
-  graphics.fillStyle(0x4c5856).fillRoundedRect(x - 22, y - 13, 44, 8, 4);
+  graphics.fillStyle(COLORS.ink, 0.25).fillEllipse(x + 4, WORLD.cannonY + 22, 93, 15);
+  graphics.fillStyle(COLORS.ink).fillRoundedRect(x - 13, y - 45, 32, 53, 6);
+  stickerRect(graphics, x - 16, y - 49, 32, 53, 6, COLORS.pink);
+  graphics.fillStyle(COLORS.paper).fillRoundedRect(x - 10, y - 42, 6, 26, 3);
+  stickerRect(graphics, x - 20, y - 55, 40, 13, 5, COLORS.yellow);
+  graphics.fillStyle(COLORS.ink).fillRoundedRect(x - 25, y - 12, 58, 29, 12);
+  stickerRect(graphics, x - 29, y - 16, 58, 29, 12, COLORS.yellow);
   for (const wheelX of [x - 24, x + 24]) {
-    graphics.fillStyle(0x20292c).fillCircle(wheelX, WORLD.cannonY + 9, 15);
-    graphics.lineStyle(2, 0x53605b).strokeCircle(wheelX, WORLD.cannonY + 9, 10);
-    graphics.fillStyle(0x7c8880).fillCircle(wheelX, WORLD.cannonY + 9, 3);
+    graphics.fillStyle(COLORS.ink).fillCircle(wheelX, WORLD.cannonY + 9, 15);
+    graphics.fillStyle(COLORS.paper).fillCircle(wheelX, WORLD.cannonY + 9, 6);
+    graphics.lineStyle(3, COLORS.ink).strokeCircle(wheelX, WORLD.cannonY + 9, 6);
   }
-  graphics.fillStyle(0xedbc61).fillCircle(x, y - 3, 5);
   if (!model.firing || model.shotCooldown < RULES.shotInterval - 0.045) return;
-  polygon(
+  sticker(
     graphics,
     [
-      { x: x - 10, y: y - 57 },
-      { x: x - 5, y: y - 66 },
-      { x, y: y - 81 },
-      { x: x + 5, y: y - 66 },
-      { x: x + 10, y: y - 57 }
+      { x: x - 12, y: y - 57 },
+      { x: x - 6, y: y - 68 },
+      { x, y: y - 86 },
+      { x: x + 6, y: y - 68 },
+      { x: x + 12, y: y - 57 }
     ],
-    0xffd779
+    COLORS.yellow,
+    3
   );
-  graphics.fillStyle(0xfffbe8).fillEllipse(x, y - 64, 8, 18);
+  graphics.fillStyle(COLORS.paper).fillEllipse(x, y - 66, 6, 14);
 };
 
 export const drawObjects = (graphics: Graphics, model: GameModel, time: number) => {
   graphics.clear();
   for (const bullet of model.bullets) {
-    graphics.fillStyle(0xffd377, 0.3).fillRoundedRect(bullet.x - 4, bullet.y, 8, 25, 4);
-    graphics.fillStyle(0xd59a45).fillRoundedRect(bullet.x - 3, bullet.y - 7, 6, 14, 3);
-    graphics.fillStyle(0xfffdf1).fillRoundedRect(bullet.x - 1.5, bullet.y - 6, 3, 9, 1.5);
+    graphics.fillStyle(COLORS.yellow).fillRoundedRect(bullet.x - 4, bullet.y - 8, 8, 17, 4);
+    graphics.lineStyle(3, COLORS.ink).strokeRoundedRect(bullet.x - 4, bullet.y - 8, 8, 17, 4);
   }
   for (const enemy of model.enemies) drawEnemy(graphics, enemy);
   for (const coin of model.drops) {
-    const width = 7 + Math.abs(Math.cos(time * 7)) * 13;
-    graphics.fillStyle(0xc18b32).fillEllipse(coin.x, coin.y + 2, width, 24);
-    graphics.fillStyle(0xffd56e).fillEllipse(coin.x, coin.y, width, 24);
-    graphics.lineStyle(2, 0xfff1b1).strokeEllipse(coin.x, coin.y, width - 5, 18);
-    graphics.lineStyle(2, 0xc18b32).lineBetween(coin.x, coin.y - 5, coin.x, coin.y + 5);
+    const width = 9 + Math.abs(Math.cos(time * 7)) * 15;
+    graphics.fillStyle(COLORS.ink).fillEllipse(coin.x + 3, coin.y + 4, width, 26);
+    graphics.fillStyle(COLORS.yellow).fillEllipse(coin.x, coin.y, width, 26);
+    graphics.lineStyle(3, COLORS.ink).strokeEllipse(coin.x, coin.y, width, 26);
+    graphics.lineStyle(3, COLORS.ink).lineBetween(coin.x, coin.y - 5, coin.x, coin.y + 5);
   }
   drawCannon(graphics, model);
 };

@@ -1,14 +1,27 @@
 .houdai-page {
+	/* DESIGN.md のカラートークン。他ページへ漏れないようページ要素に閉じ込める。 */
+	--ink: #1f1a2e;
+	--paper: #ffffff;
+	--cream: #fff6e8;
+	--yellow: #fbcd3f;
+	--pink: #ff5a8a;
+	--pink-text: #e0457b;
+	--sky: #8fd8f5;
+	--line: 0.8cqw;
+	--shadow: 1cqw 1cqw 0 var(--ink);
+	--shadow-sm: 0.6cqw 0.6cqw 0 var(--ink);
+
 	min-height: 100dvh;
 	display: grid;
 	place-items: center;
-	background: #d5e2d8;
-	color: #2d403a;
+	background: var(--yellow);
+	color: var(--ink);
 	padding: env(safe-area-inset-top) env(safe-area-inset-right)
 		env(safe-area-inset-bottom) env(safe-area-inset-left);
 	font-family:
-		"Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans",
-		Meiryo, sans-serif;
+		"Hiragino Maru Gothic ProN", "M PLUS Rounded 1c", "Arial Rounded MT Bold",
+		"Hiragino Sans", Meiryo, sans-serif;
+	font-weight: 800;
 	overscroll-behavior: none;
 	touch-action: none;
 	user-select: none;
@@ -26,8 +39,9 @@
 	aspect-ratio: 1 / 2;
 	overflow: hidden;
 	container-type: inline-size;
-	background: #e4f0e9;
-	box-shadow: 0 24px 90px #304c3720;
+	background: var(--sky);
+	outline: 4px solid var(--ink);
+	box-shadow: 8px 8px 0 4px var(--ink);
 }
 
 .houdai-canvas {
@@ -47,13 +61,13 @@
 }
 
 .houdai-frame button:focus-visible {
-	outline: 3px solid #385e53;
-	outline-offset: 4px;
+	outline: var(--line) solid var(--pink);
+	outline-offset: 1.2cqw;
 }
 
 .houdai-frame button:disabled {
 	cursor: default;
-	opacity: 0.4;
+	opacity: 0.5;
 }
 
 .houdai-frame svg {
@@ -65,221 +79,200 @@
 .houdai-hud {
 	position: absolute;
 	inset: 0 0 auto;
-	padding: 5cqw 6cqw 6cqw;
-	background: linear-gradient(#e4f0e9 78%, #e4f0e900);
+	padding: 3.5cqw 4.5cqw 0;
 	pointer-events: none;
 	z-index: 2;
 }
 
-.houdai-brand-row,
 .houdai-score-row,
-.houdai-hud-actions,
 .houdai-health,
-.houdai-best,
-.houdai-coin-count {
+.houdai-best {
 	display: flex;
 	align-items: center;
-}
-
-.houdai-brand-row,
-.houdai-score-row {
-	justify-content: space-between;
-}
-
-.houdai-wordmark {
-	display: inline-flex;
-	align-items: center;
-	gap: 1.3cqw;
-	font-size: 3.5cqw;
-	font-weight: 900;
-	letter-spacing: 0.05em;
-}
-
-.houdai-brand-mark {
-	width: 2.7cqw;
-	height: 3.5cqw;
-	background: #354b42;
-	clip-path: polygon(
-		28% 0,
-		72% 0,
-		72% 55%,
-		100% 70%,
-		100% 100%,
-		0 100%,
-		0 70%,
-		28% 55%
-	);
-}
-
-.houdai-brand-dot {
-	align-self: start;
-	font-size: 1.8cqw;
-}
-
-.houdai-mode {
-	display: flex;
-	align-items: center;
-	gap: 1.5cqw;
-	font-size: 2cqw;
-	font-weight: 700;
-	letter-spacing: 0.14em;
-	color: #648176;
-}
-
-.houdai-mode > span {
-	width: 1.2cqw;
-	height: 1.2cqw;
-	border-radius: 50%;
-	background: #739881;
 }
 
 .houdai-score-row {
-	margin-top: 5cqw;
-}
-
-.houdai-score {
-	display: flex;
-	flex-direction: column;
-}
-
-.houdai-label {
-	color: #637d70;
-	font-size: 2.4cqw;
-	font-weight: 600;
-	letter-spacing: 0.13em;
-}
-
-.houdai-score > strong {
-	font-size: 9cqw;
-	font-weight: 800;
-	letter-spacing: -0.045em;
-	line-height: 1.25;
-	font-variant-numeric: tabular-nums;
-}
-
-.houdai-hud-actions {
 	gap: 2.5cqw;
 }
 
-.houdai-coin-count {
-	gap: 2cqw;
-	min-width: 18cqw;
-	height: 10cqw;
-	padding: 0 3cqw;
-	border: 1px solid #c3d5c5;
-	border-radius: 6cqw;
-	background: #ffffff30;
-	font-size: 4cqw;
+/* 残り時間とスコアは同じ大きさのカードで左右に並べる。 */
+.houdai-stat {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 0.8cqw 2cqw 0.4cqw;
+	border: var(--line) solid var(--ink);
+	border-radius: 3.5cqw;
+	background: var(--paper);
+	box-shadow: var(--shadow);
 }
 
-.houdai-coin-icon,
-.houdai-small-coin {
-	display: inline-grid;
-	place-items: center;
-	width: 5.5cqw;
-	height: 5.5cqw;
-	border: 1.5px solid #b99343;
-	border-radius: 50%;
-	background: #f5d681;
-	box-shadow: inset 0 0 0 2px #ffedb4;
-	font-size: 3cqw;
-	font-weight: 800;
-	color: #a67a2d;
+.houdai-label {
+	color: var(--pink-text);
+	font-size: 2.3cqw;
+	font-weight: 900;
+	letter-spacing: 0.13em;
+}
+
+.houdai-timer {
+	background: var(--yellow);
+}
+
+.houdai-timer .houdai-label {
+	color: var(--ink);
+}
+
+.houdai-timer-low {
+	background: var(--pink);
+	animation: houdai-timer-pulse 1s ease-in-out infinite;
+}
+
+.houdai-timer-low > strong {
+	color: var(--paper);
+	-webkit-text-stroke: 0.6cqw var(--ink);
+	paint-order: stroke fill;
+}
+
+@keyframes houdai-timer-pulse {
+	50% {
+		transform: scale(1.05);
+	}
+}
+
+.houdai-stat > strong {
+	font-size: 8cqw;
+	font-weight: 900;
+	letter-spacing: -0.02em;
+	line-height: 1.15;
+	font-variant-numeric: tabular-nums;
 }
 
 .houdai-pause {
+	flex-shrink: 0;
 	display: grid;
 	place-items: center;
-	width: 11.3cqw;
-	height: 11.3cqw;
-	border: 1px solid #baccbf;
+	width: 10.5cqw;
+	height: 10.5cqw;
+	border: var(--line) solid var(--ink);
 	border-radius: 50%;
-	background: #ffffff38;
-	color: #3b5949;
+	background: var(--paper);
+	box-shadow: var(--shadow);
+	color: var(--ink);
 	pointer-events: auto;
+	transition:
+		transform 0.1s ease,
+		box-shadow 0.1s ease;
+}
+
+.houdai-pause:active:not(:disabled) {
+	transform: translate(1cqw, 1cqw);
+	box-shadow: 0 0 0 var(--ink);
 }
 
 .houdai-health {
 	gap: 2cqw;
-	margin-top: 3cqw;
-	color: #628f75;
+	margin-top: 2.5cqw;
+	color: var(--pink);
 }
 
 .houdai-health > svg {
-	width: 3.4cqw;
-	height: 3.4cqw;
+	width: 4.4cqw;
+	height: 4.4cqw;
 	fill: currentColor;
-	stroke-width: 0;
+	stroke: var(--ink);
+	stroke-width: 2.6;
 }
 
 .houdai-health-track {
 	flex: 1;
-	height: 1.6cqw;
+	height: 3cqw;
+	border: var(--line) solid var(--ink);
 	border-radius: 2cqw;
-	background: #c9d9cc;
+	background: var(--paper);
+	box-shadow: var(--shadow-sm);
 	overflow: hidden;
 }
 
 .houdai-health-track > span {
 	display: block;
 	height: 100%;
-	border-radius: inherit;
 	background: currentColor;
 	transition: width 0.25s ease;
 }
 
 .houdai-health-number {
+	padding: 0.2cqw 1.8cqw;
+	border: 0.6cqw solid var(--ink);
+	border-radius: 3cqw;
+	background: var(--paper);
+	color: var(--ink);
 	font-size: 2.7cqw;
-	font-weight: 700;
+	font-weight: 900;
 	font-variant-numeric: tabular-nums;
 }
 
 .houdai-health-number > span {
-	font-weight: 400;
-	color: #83988a;
+	font-weight: 700;
 }
 
 .houdai-health-low {
-	color: #cb6d5e;
+	color: var(--yellow);
 }
 
 .houdai-welcome {
 	position: absolute;
-	top: 32%;
-	left: 9%;
-	width: 82%;
+	top: 30%;
+	left: 7%;
+	width: 86%;
 	text-align: center;
 }
 
 .houdai-eyebrow {
-	display: block;
-	font-size: 3cqw;
-	font-weight: 700;
-	letter-spacing: 0.22em;
-	color: #667f6d;
+	display: inline-block;
+	padding: 0.8cqw 3cqw;
+	border: 0.6cqw solid var(--ink);
+	border-radius: 5cqw;
+	background: var(--ink);
+	color: var(--yellow);
+	font-size: 2.8cqw;
+	font-weight: 900;
+	letter-spacing: 0.18em;
 }
 
 .houdai-welcome h1 {
-	margin: 2cqw 0 5cqw;
+	margin: 3cqw 0 4cqw;
+	color: var(--yellow);
 	font-size: 15cqw;
 	font-weight: 900;
-	letter-spacing: -0.065em;
+	letter-spacing: 0.01em;
 	line-height: 1.05;
+	-webkit-text-stroke: 2.4cqw var(--ink);
+	paint-order: stroke fill;
+	text-shadow: 1.2cqw 1.2cqw 0 var(--ink);
 }
 
 .houdai-subtitle {
 	display: block;
-	margin-top: 3cqw;
-	font-size: 3.8cqw;
-	letter-spacing: 0.18em;
-	font-weight: 600;
+	margin-top: 2cqw;
+	color: var(--pink);
+	font-size: 5cqw;
+	letter-spacing: 0.08em;
+	font-weight: 900;
+	-webkit-text-stroke: 1.4cqw var(--ink);
+	text-shadow: 0.7cqw 0.7cqw 0 var(--ink);
 }
 
 .houdai-intro {
-	margin: 0 0 7cqw;
-	font-size: 2.9cqw;
-	line-height: 2;
-	color: #667b68;
+	margin: 0 0 6cqw;
+	padding: 2cqw 3cqw;
+	border: 0.6cqw solid var(--ink);
+	border-radius: 4cqw;
+	background: var(--paper);
+	box-shadow: var(--shadow-sm);
+	font-size: 3cqw;
+	font-weight: 800;
+	line-height: 1.9;
 }
 
 .houdai-primary {
@@ -290,97 +283,52 @@
 	width: 100%;
 	min-height: 14cqw;
 	padding: 3.5cqw 5cqw;
-	border: 1px solid #bd6851;
-	border-radius: 3cqw;
-	background: #df8064;
-	box-shadow:
-		0 1cqw 0 #bc664f,
-		0 2cqw 4cqw #ab71551a;
-	color: #fffcf2;
-	font-size: 3.8cqw;
-	font-weight: 700;
-	letter-spacing: 0.04em;
+	border: var(--line) solid var(--ink);
+	border-radius: 5cqw;
+	background: var(--pink);
+	box-shadow: var(--shadow);
+	color: var(--paper);
+	font-size: 4.2cqw;
+	font-weight: 900;
+	letter-spacing: 0.06em;
 	transition:
-		transform 0.15s ease,
-		box-shadow 0.15s ease;
+		transform 0.1s ease,
+		box-shadow 0.1s ease;
 }
 
 .houdai-primary > span {
 	flex: 1;
+	-webkit-text-stroke: 0.5cqw var(--ink);
+	paint-order: stroke fill;
 }
 
-.houdai-primary:active {
-	transform: translateY(0.6cqw);
-	box-shadow: 0 0.4cqw 0 #bc664f;
+.houdai-primary:active:not(:disabled) {
+	transform: translate(1cqw, 1cqw);
+	box-shadow: 0 0 0 var(--ink);
 }
 
 .houdai-best {
 	justify-content: center;
 	gap: 2cqw;
-	margin-top: 6cqw;
-	color: #657a65;
-	font-size: 2.7cqw;
+	width: fit-content;
+	margin: 5cqw auto 0;
+	padding: 1cqw 3.4cqw;
+	border: 0.6cqw solid var(--ink);
+	border-radius: 5cqw;
+	background: var(--yellow);
+	box-shadow: var(--shadow-sm);
+	font-size: 2.8cqw;
+	font-weight: 900;
 }
 
 .houdai-best svg {
-	width: 3.5cqw;
-	height: 3.5cqw;
+	width: 3.8cqw;
+	height: 3.8cqw;
 }
 
 .houdai-best strong {
-	font-size: 3.5cqw;
+	font-size: 3.6cqw;
 	font-variant-numeric: tabular-nums;
-}
-
-.houdai-footer {
-	position: absolute;
-	bottom: 3.4%;
-	left: 0;
-	width: 100%;
-	text-align: center;
-	pointer-events: none;
-	color: #746d4e;
-}
-
-.houdai-drag-hint {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 4cqw;
-}
-
-.houdai-drag-hint > span {
-	width: 15cqw;
-	height: 1px;
-	background: #b5a98280;
-}
-
-.houdai-drag-hint svg {
-	width: 5.5cqw;
-	height: 5.5cqw;
-}
-
-.houdai-footer p {
-	font-size: 2.6cqw;
-	font-weight: 600;
-	letter-spacing: 0.06em;
-	margin: 1cqw 0 2cqw;
-}
-
-.houdai-heal-hint {
-	display: inline-flex;
-	align-items: center;
-	gap: 1cqw;
-	font-size: 2.3cqw;
-	color: #8f825d;
-}
-
-.houdai-small-coin {
-	width: 3cqw;
-	height: 3cqw;
-	font-size: 1.7cqw;
-	box-shadow: none;
-	border-width: 1px;
 }
 
 .houdai-overlay {
@@ -389,40 +337,41 @@
 	z-index: 3;
 	display: grid;
 	place-items: center;
-	background: #33473c38;
-	backdrop-filter: blur(5px);
+	background: #1f1a2e80;
 }
 
 .houdai-result {
 	width: 86%;
-	padding: 7cqw 6cqw;
-	border: 1px solid #fff9e9;
+	padding: 6cqw 6cqw 5cqw;
+	border: var(--line) solid var(--ink);
 	border-radius: 6cqw;
-	background: #fff9ec;
-	box-shadow: 0 5cqw 15cqw #314a3826;
+	background: var(--cream);
+	box-shadow: var(--shadow);
 	text-align: center;
 }
 
 .houdai-result-symbol {
 	display: grid;
 	place-items: center;
-	width: 13cqw;
-	height: 13cqw;
-	margin: 0 auto 5cqw;
-	border: 1px solid #dbc890;
+	width: 14cqw;
+	height: 14cqw;
+	margin: 0 auto 4cqw;
+	border: var(--line) solid var(--ink);
 	border-radius: 50%;
-	background: #f8e9b9;
-	color: #937b41;
+	background: var(--yellow);
+	box-shadow: var(--shadow-sm);
+	color: var(--ink);
 }
 
 .houdai-result-symbol svg {
-	width: 6cqw;
-	height: 6cqw;
+	width: 7cqw;
+	height: 7cqw;
 }
 
 .houdai-result h2 {
-	margin: 3cqw 0 6cqw;
-	font-size: 5.1cqw;
+	margin: 3cqw 0 4cqw;
+	font-size: 5.4cqw;
+	font-weight: 900;
 	letter-spacing: 0.02em;
 }
 
@@ -433,56 +382,71 @@
 }
 
 .houdai-result-score strong {
-	font-size: 14cqw;
-	letter-spacing: -0.05em;
+	color: var(--pink-text);
+	font-size: 13cqw;
+	font-weight: 900;
+	line-height: 1.1;
 	font-variant-numeric: tabular-nums;
 }
 
 .houdai-result-stats {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
-	padding: 5cqw 0;
 	margin-top: 3cqw;
-	border-block: 1px solid #dfdec7;
+	border: var(--line) solid var(--ink);
+	border-radius: 4cqw;
+	background: var(--paper);
+	box-shadow: var(--shadow-sm);
+	overflow: hidden;
 }
 
 .houdai-result-stats > div {
 	display: flex;
 	flex-direction: column;
-	gap: 2cqw;
+	gap: 1.4cqw;
+	padding: 3.4cqw 0;
 }
 
 .houdai-result-stats > div + div {
-	border-left: 1px solid #dfdec7;
+	border-left: 0.6cqw solid var(--ink);
 }
 
 .houdai-result-stats span {
 	font-size: 2.5cqw;
-	color: #78816a;
+	font-weight: 900;
+	color: var(--pink-text);
 }
 
 .houdai-result-stats strong {
-	font-size: 4.5cqw;
+	font-size: 4.6cqw;
+	font-weight: 900;
 }
 
 .houdai-result-stats small {
 	font-size: 2.5cqw;
-	font-weight: 400;
+	font-weight: 800;
 }
 
 .houdai-result .houdai-best {
-	margin: 5cqw 0 6cqw;
+	margin: 5cqw auto 6cqw;
 }
 
 .houdai-text-button {
-	margin-top: 5cqw;
+	margin-top: 4cqw;
 	min-height: 10cqw;
-	border: 0;
-	background: transparent;
+	padding: 0 4cqw;
+	border: 0.6cqw solid var(--ink);
+	border-radius: 5cqw;
+	background: var(--paper);
+	box-shadow: var(--shadow-sm);
+	color: var(--ink);
 	font-size: 3cqw;
-	color: #7b826e;
-	text-decoration: underline;
-	text-underline-offset: 4px;
+	font-weight: 900;
+}
+
+.houdai-text-button:active {
+	transform: translate(0.6cqw, 0.6cqw);
+	box-shadow: 0 0 0 var(--ink);
 }
 
 .houdai-rotate {
@@ -506,24 +470,40 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		background: #e4f0e9;
+		background: var(--yellow);
+		color: var(--ink);
 		gap: 16px;
 	}
 
 	.houdai-rotate > svg {
-		width: 44px;
-		height: 44px;
+		width: 56px;
+		height: 56px;
+		padding: 10px;
+		border: 4px solid var(--ink);
+		border-radius: 50%;
+		background: var(--paper);
+		box-shadow: 4px 4px 0 var(--ink);
+	}
+
+	.houdai-rotate > strong {
+		font-size: 22px;
+		font-weight: 900;
 	}
 
 	.houdai-rotate > p {
 		margin: 0;
+		padding: 4px 14px;
+		border: 3px solid var(--ink);
+		border-radius: 20px;
+		background: var(--paper);
 		font-size: 13px;
-		color: #667f6d;
+		font-weight: 900;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.houdai-frame * {
 		transition: none;
+		animation: none;
 	}
 }

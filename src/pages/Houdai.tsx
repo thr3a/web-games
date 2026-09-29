@@ -29,7 +29,6 @@ const iconPaths = {
   arrow: 'M4 12h15m-6-6 6 6-6 6',
   trophy: 'M8 3h8v8a4 4 0 0 1-8 0ZM8 5H4v3a4 4 0 0 0 4 4m8-7h4v3a4 4 0 0 1-4 4m-4 3v6m-4 0h8',
   heart: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z',
-  drag: 'M4 16h16M7 13l-3 3 3 3m10-6 3 3-3 3M12 5v5m-3-2 3 3 3-3',
   retry: 'M4 10a8 8 0 1 1 1 7M4 4v6h6',
   phone: 'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm3 17h2'
 };
@@ -39,7 +38,7 @@ const Icon = ({ name }: { name: keyof typeof iconPaths }) => (
     viewBox='0 0 24 24'
     fill='none'
     stroke='currentColor'
-    strokeWidth='1.8'
+    strokeWidth='2.6'
     strokeLinecap='round'
     strokeLinejoin='round'
     aria-hidden='true'
@@ -106,37 +105,24 @@ const Houdai = () => {
           aria-label='画面下部を押したまま左右にドラッグして砲台を操作'
         />
         <header className='houdai-hud'>
-          <div className='houdai-brand-row'>
-            <span className='houdai-wordmark'>
-              <span className='houdai-brand-mark' /> HOUDAI<span className='houdai-brand-dot'>®</span>
-            </span>
-            <span className='houdai-mode'>
-              <span />{' '}
-              {status === 'playing' || status === 'paused'
-                ? `PHASE ${state.phase + 1} · 残り ${formatTime(state.remaining)}`
-                : '60 SEC SURVIVAL'}
-            </span>
-          </div>
           <div className='houdai-score-row'>
-            <div className='houdai-score'>
+            <div className={`houdai-stat houdai-timer${state.remaining <= 10 ? ' houdai-timer-low' : ''}`}>
+              <span className='houdai-label'>のこり時間</span>
+              <strong>{formatTime(state.remaining)}</strong>
+            </div>
+            <div className='houdai-stat'>
               <span className='houdai-label'>スコア</span>
               <strong>{String(state.score).padStart(6, '0')}</strong>
             </div>
-            <div className='houdai-hud-actions'>
-              <output className='houdai-coin-count' aria-label={`コイン ${state.coins}枚`}>
-                <span className='houdai-coin-icon'>C</span>
-                <strong>{state.coins}</strong>
-              </output>
-              <button
-                type='button'
-                className='houdai-pause'
-                aria-label='一時停止'
-                disabled={status !== 'playing'}
-                onClick={() => controller.current?.pause()}
-              >
-                <Icon name='pause' />
-              </button>
-            </div>
+            <button
+              type='button'
+              className='houdai-pause'
+              aria-label='一時停止'
+              disabled={status !== 'playing'}
+              onClick={() => controller.current?.pause()}
+            >
+              <Icon name='pause' />
+            </button>
           </div>
           <div className={`houdai-health${state.hp <= 25 ? ' houdai-health-low' : ''}`}>
             <Icon name='heart' />
@@ -249,18 +235,6 @@ const Houdai = () => {
             </section>
           </div>
         )}
-
-        <footer className='houdai-footer'>
-          <div className='houdai-drag-hint'>
-            <span />
-            <Icon name='drag' />
-            <span />
-          </div>
-          <p>押し続けて連射 · 左右にドラッグ</p>
-          <span className='houdai-heal-hint'>
-            <span className='houdai-small-coin'>C</span> コインを拾うと HP が回復
-          </span>
-        </footer>
       </section>
       <div className='houdai-rotate'>
         <Icon name='phone' />

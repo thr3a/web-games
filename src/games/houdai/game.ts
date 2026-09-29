@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { drawEnemy, drawLandscape, drawObjects, drawSky, PALETTES } from './draw';
+import { COLORS, drawEnemy, drawLandscape, drawObjects, drawSky, FONT_FAMILY, PALETTES, TEXT_COLORS } from './draw';
 import {
   createModel,
   type Enemy,
@@ -75,7 +75,7 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
   };
 
   const addEffect = (event: GameEvent) => {
-    const color = event.kind === 'heal' ? 0x6fa58c : PALETTES[event.palette][0];
+    const color = event.kind === 'heal' ? COLORS.pink : PALETTES[event.palette][0];
     const count = event.kind === 'hit' ? 3 : event.kind === 'split' ? 8 : 15;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -102,12 +102,14 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
           : `−${event.value} HP`;
     const object = scene.add
       .text(event.x, event.y - 26, content, {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '21px',
+        fontFamily: FONT_FAMILY,
+        fontSize: '22px',
         fontStyle: 'bold',
-        color: event.kind === 'damage' ? '#b94b43' : '#35594f',
-        stroke: '#fff9e6',
-        strokeThickness: 4
+        color:
+          event.kind === 'destroy' ? TEXT_COLORS.yellow : event.kind === 'heal' ? TEXT_COLORS.pink : TEXT_COLORS.paper,
+        stroke: TEXT_COLORS.ink,
+        strokeThickness: 6,
+        shadow: { offsetX: 2, offsetY: 3, color: TEXT_COLORS.ink, blur: 0, stroke: true, fill: true }
       })
       .setOrigin(0.5)
       .setDepth(5);
@@ -164,11 +166,13 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
       if (!label) {
         label = scene.add
           .text(enemy.x, enemy.y, String(enemy.hp), {
-            fontFamily: 'Arial, sans-serif',
+            fontFamily: FONT_FAMILY,
             fontSize: '27px',
             fontStyle: 'bold',
-            color: '#ffffff',
-            shadow: { offsetX: 0, offsetY: 2, color: '#00000033', blur: 0, fill: true }
+            color: TEXT_COLORS.paper,
+            stroke: TEXT_COLORS.ink,
+            strokeThickness: 6,
+            shadow: { offsetX: 2, offsetY: 2, color: TEXT_COLORS.ink, blur: 0, stroke: true, fill: true }
           })
           .setOrigin(0.5)
           .setDepth(3);
@@ -224,12 +228,13 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
           phaseFlash = 0.35;
           const object = scene.add
             .text(WORLD.width / 2, WORLD.height * 0.34, PHASE_LABELS[phase] ?? '', {
-              fontFamily: 'Arial, sans-serif',
-              fontSize: '30px',
+              fontFamily: FONT_FAMILY,
+              fontSize: '32px',
               fontStyle: 'bold',
-              color: '#fff4d6',
-              stroke: '#8a5a2a',
-              strokeThickness: 6
+              color: TEXT_COLORS.yellow,
+              stroke: TEXT_COLORS.ink,
+              strokeThickness: 9,
+              shadow: { offsetX: 4, offsetY: 4, color: TEXT_COLORS.ink, blur: 0, stroke: true, fill: true }
             })
             .setOrigin(0.5)
             .setDepth(6);
@@ -272,11 +277,15 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
       floatingTexts = floatingTexts.filter((text) => text.life > 0);
       if (damageFlash > 0) {
         damageFlash -= dt;
-        effectsGraphics.fillStyle(0xe77465, Math.max(0, damageFlash * 0.7)).fillRect(0, 0, WORLD.width, WORLD.height);
+        effectsGraphics
+          .fillStyle(COLORS.pink, Math.max(0, damageFlash * 0.7))
+          .fillRect(0, 0, WORLD.width, WORLD.height);
       }
       if (phaseFlash > 0) {
         phaseFlash -= dt;
-        effectsGraphics.fillStyle(0xffe9a8, Math.max(0, phaseFlash * 0.6)).fillRect(0, 0, WORLD.width, WORLD.height);
+        effectsGraphics
+          .fillStyle(COLORS.yellow, Math.max(0, phaseFlash * 0.6))
+          .fillRect(0, 0, WORLD.width, WORLD.height);
       }
       publish();
     }
@@ -285,7 +294,7 @@ export const createHoudaiGame = (parent: HTMLElement, onChange: (state: GameSnap
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
-    backgroundColor: '#e4f0e9',
+    backgroundColor: '#8fd8f5',
     banner: false,
     audio: { noAudio: true },
     input: { keyboard: false, activePointers: 2 },
