@@ -160,14 +160,14 @@ export const drawLandscape = (graphics: Graphics, time: number) => {
     const y = 167 + (i % 3) * 108;
     // 雲は 2 つの角丸を重ね、内側に入った線を白で塗りつぶして 1 つの輪郭に見せる。
     graphics.fillStyle(COLORS.ink);
-    graphics.fillRoundedRect(x + 4, y + 4, 70, 14, 7);
-    graphics.fillRoundedRect(x + 22, y - 4, 34, 16, 8);
+    graphics.fillRoundedRect(x + 2, y + 2, 70, 18, 9);
+    graphics.fillRoundedRect(x + 20, y - 8, 34, 20, 10);
     graphics.lineStyle(3, COLORS.ink);
-    graphics.fillStyle(COLORS.paper).fillRoundedRect(x, y, 70, 14, 7);
-    graphics.strokeRoundedRect(x, y, 70, 14, 7);
-    graphics.fillStyle(COLORS.paper).fillRoundedRect(x + 18, y - 8, 34, 16, 8);
-    graphics.strokeRoundedRect(x + 18, y - 8, 34, 16, 8);
-    graphics.fillStyle(COLORS.paper).fillRect(x + 16, y + 1.5, 38, 8);
+    graphics.fillStyle(COLORS.paper).fillRoundedRect(x, y, 70, 18, 9);
+    graphics.strokeRoundedRect(x, y, 70, 18, 9);
+    graphics.fillStyle(COLORS.paper).fillRoundedRect(x + 18, y - 10, 34, 20, 10);
+    graphics.strokeRoundedRect(x + 18, y - 10, 34, 20, 10);
+    graphics.fillStyle(COLORS.paper).fillRect(x + 16, y + 1.5, 38, 10);
   }
   // 山は固定表示にする（動くのは雲だけ）。
   drawMountains(graphics);
