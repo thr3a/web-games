@@ -8,7 +8,8 @@ export const COLORS = {
   cream: 0xfff6e8,
   yellow: 0xfbcd3f,
   pink: 0xff5a8a,
-  sky: 0x8fd8f5,
+  skyTop: 0x4aa8f0,
+  skyBottom: 0xb4ecfa,
   hillBack: 0x7fdc8f,
   hillFront: 0x3cc47c,
   ground: 0xffe49a,
@@ -78,8 +79,22 @@ const stickerRect = (
   graphics.lineStyle(LINE, COLORS.ink).strokeRoundedRect(x, y, width, height, radius);
 };
 
+// 2 色を RGB 成分ごとに線形補間する。
+const lerpColor = (from: number, to: number, t: number) => {
+  const channel = (shift: number) => {
+    const a = (from >> shift) & 0xff;
+    const b = (to >> shift) & 0xff;
+    return Math.round(a + (b - a) * t) << shift;
+  };
+  return channel(16) | channel(8) | channel(0);
+};
+
 export const drawSky = (graphics: Graphics) => {
-  graphics.fillStyle(COLORS.sky).fillRect(0, 0, WORLD.width, WORLD.height);
+  // fillGradientStyle は WebGL 専用なので、細い帯を重ねて上から下へのグラデーションを作る。
+  const band = 4;
+  for (let y = 0; y < WORLD.dangerY; y += band) {
+    graphics.fillStyle(lerpColor(COLORS.skyTop, COLORS.skyBottom, y / WORLD.dangerY)).fillRect(0, y, WORLD.width, band);
+  }
   // 半透明の白い円を外側から重ね、太陽に近いほど明るくなる光のにじみを作る。
   for (let i = 0; i < 12; i++) {
     graphics.fillStyle(COLORS.paper, 0.05).fillCircle(SUN.x, SUN.y, SUN.radius + 36 - i * 3);
