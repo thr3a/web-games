@@ -30,15 +30,142 @@
 	display: block;
 }
 
-.subway-rush-distance {
+/* HUD: 本家と同じく左上にポーズ、右上にスコアとコイン */
+.subway-rush-hud {
 	position: absolute;
-	top: calc(env(safe-area-inset-top) + 16px);
-	right: 16px;
-	padding: 6px 12px;
-	border-radius: 10px;
-	background: rgb(20 30 60 / 0.55);
-	font-size: 22px;
+	inset: calc(env(safe-area-inset-top) + 14px) 14px auto 14px;
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
 	pointer-events: none;
+}
+
+.subway-rush-pause {
+	display: flex;
+	gap: 7px;
+	justify-content: center;
+	align-items: center;
+	width: 52px;
+	height: 52px;
+	border: 3px solid #ffffff;
+	border-radius: 12px;
+	background: linear-gradient(#5aa9f5, #2f6fd1);
+	box-shadow: 0 4px 0 rgb(15 40 90 / 0.6);
+	cursor: pointer;
+	pointer-events: auto;
+}
+
+.subway-rush-pause span {
+	width: 8px;
+	height: 22px;
+	border-radius: 3px;
+	background: #ffffff;
+}
+
+.subway-rush-counters {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 6px;
+}
+
+.subway-rush-panel {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 12px;
+	border-radius: 10px;
+	background: rgb(40 50 90 / 0.55);
+	font-variant-numeric: tabular-nums;
+	text-shadow: 0 2px 0 rgb(0 0 0 / 0.35);
+}
+
+.subway-rush-score {
+	font-size: 28px;
+	letter-spacing: 0.04em;
+}
+
+.subway-rush-star {
+	color: #ffd23f;
+	font-size: 26px;
+}
+
+.subway-rush-coins {
+	font-size: 24px;
+}
+
+.subway-rush-coin {
+	width: 22px;
+	height: 22px;
+	border: 3px solid #e58a00;
+	border-radius: 50%;
+	background: #ffc21a;
+}
+
+.subway-rush-distance {
+	font-size: 14px;
+	text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+/* 加速演出: 集中線と「SPEED UP!」を一度だけ再生する */
+.subway-rush-speedup {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	pointer-events: none;
+}
+
+.subway-rush-speedlines {
+	position: absolute;
+	inset: 0;
+	background: repeating-conic-gradient(
+		from 0deg at 50% 45%,
+		rgb(255 255 255 / 0.55) 0deg 1.5deg,
+		transparent 1.5deg 9deg
+	);
+	mask-image: radial-gradient(circle at 50% 45%, transparent 35%, #000000 75%);
+	animation: subway-rush-lines 1.2s ease-out forwards;
+}
+
+.subway-rush-speedup strong {
+	margin-bottom: 30%;
+	color: #ffd23f;
+	font-size: 44px;
+	font-style: italic;
+	-webkit-text-stroke: 2px #1f1a2e;
+	text-shadow: 0 4px 0 #1f1a2e;
+	animation: subway-rush-pop 1.6s ease-out forwards;
+}
+
+@keyframes subway-rush-lines {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes subway-rush-pop {
+	0% {
+		opacity: 0;
+		transform: scale(0.4);
+	}
+	15% {
+		opacity: 1;
+		transform: scale(1.15);
+	}
+	25% {
+		transform: scale(1);
+	}
+	80% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-20px);
+	}
 }
 
 .subway-rush-overlay {
@@ -48,16 +175,137 @@
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 12px;
+	gap: 18px;
 	border: 0;
 	background: rgb(10 15 30 / 0.45);
 	color: inherit;
 	font: inherit;
 	font-size: 18px;
+}
+
+.subway-rush-title {
+	justify-content: flex-start;
+	padding-top: 22dvh;
+	background: linear-gradient(
+		rgb(10 30 80 / 0.55),
+		rgb(10 15 30 / 0.2) 60%,
+		rgb(10 15 30 / 0.55)
+	);
 	cursor: pointer;
 }
 
-.subway-rush-overlay strong {
-	font-size: 40px;
-	letter-spacing: 0.04em;
+.subway-rush-logo {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin: 0;
+	line-height: 0.95;
+	font-size: 58px;
+	font-style: italic;
+	letter-spacing: 0.02em;
+	transform: rotate(-4deg);
+}
+
+.subway-rush-logo span {
+	color: #ffd23f;
+	-webkit-text-stroke: 3px #1f1a2e;
+	text-shadow: 0 6px 0 #1f1a2e;
+}
+
+.subway-rush-logo span + span {
+	color: #ff4f9a;
+	font-size: 72px;
+}
+
+.subway-rush-howto {
+	margin: 12px 0 0;
+	padding: 12px 18px;
+	border-radius: 12px;
+	background: rgb(20 30 60 / 0.6);
+	list-style: none;
+	font-size: 15px;
+	line-height: 1.8;
+	text-align: left;
+}
+
+.subway-rush-blink {
+	margin-top: auto;
+	margin-bottom: 14dvh;
+	font-size: 24px;
+	text-shadow: 0 3px 0 rgb(0 0 0 / 0.4);
+	animation: subway-rush-blink 1.1s ease-in-out infinite;
+}
+
+@keyframes subway-rush-blink {
+	50% {
+		opacity: 0.35;
+	}
+}
+
+.subway-rush-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	width: min(80%, 300px);
+	padding: 24px 20px;
+	border: 4px solid #ffffff;
+	border-radius: 20px;
+	background: linear-gradient(#3f86e6, #2856b8);
+	box-shadow: 0 8px 0 rgb(10 25 70 / 0.7);
+}
+
+.subway-rush-card h2 {
+	margin: 0;
+	color: #ffd23f;
+	font-size: 36px;
+	font-style: italic;
+	-webkit-text-stroke: 2px #1f1a2e;
+	text-shadow: 0 4px 0 #1f1a2e;
+}
+
+.subway-rush-result {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 8px 16px;
+	width: 100%;
+	margin: 0;
+	padding: 12px 16px;
+	border-radius: 12px;
+	background: rgb(15 30 80 / 0.45);
+	font-size: 18px;
+}
+
+.subway-rush-result dt {
+	color: #cfe0ff;
+}
+
+.subway-rush-result dd {
+	margin: 0;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.subway-rush-result .subway-rush-result-score {
+	color: #ffd23f;
+	font-size: 22px;
+}
+
+.subway-rush-button {
+	min-width: 180px;
+	padding: 12px 24px;
+	border: 3px solid #ffffff;
+	border-radius: 14px;
+	background: linear-gradient(#7fdc4a, #3fa82a);
+	box-shadow: 0 5px 0 #1f6b16;
+	color: #ffffff;
+	font: inherit;
+	font-size: 22px;
+	text-shadow: 0 2px 0 rgb(0 0 0 / 0.3);
+	cursor: pointer;
+}
+
+.subway-rush-button:active {
+	transform: translateY(3px);
+	box-shadow: 0 2px 0 #1f6b16;
 }
