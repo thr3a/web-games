@@ -5,6 +5,7 @@ import {
   type GameStatus,
   isGrounded,
   isSliding,
+  isVehicle,
   jump,
   laneX,
   type Model,
@@ -18,7 +19,8 @@ import {
   slide,
   startModel,
   stepModel,
-  TRAIN
+  TRAIN,
+  WAGON
 } from './model';
 
 export type GameSnapshot = { status: GameStatus; distance: number; score: number; coins: number; speedLevel: number };
@@ -65,6 +67,8 @@ const COLORS = {
   trainBand: '#7b2c48',
   trainRoof: 0xa79db0,
   bogie: 0x2c2a33,
+  wagonSide: 0xc0602f,
+  wagonDeck: 0x9a7552,
   post: 0x5a5f69,
   coin: 0xffc21a,
   skin: 0xf3c79e,
@@ -583,7 +587,39 @@ export const createSubwayRushGame = (
     return group;
   };
 
+  // 貨車: 荷台だけの低い車両。荷台の上面が当たり判定の高さ WAGON.height と一致する。
+  const wagonBodyGeometry = box(TRAIN.width, WAGON.height - bodyBottom, WAGON.carLength - 0.4);
+  const wagonDeckGeometry = box(TRAIN.width - 0.3, 0.04, WAGON.carLength - 0.7);
+  const wagonBogieGeometry = box(TRAIN.width * 0.8, bodyBottom, WAGON.carLength - 1.6);
+  const wagonSideMaterial = material(COLORS.wagonSide);
+  const wagonDeckMaterial = material(COLORS.wagonDeck);
+  const wagonMaterials = [
+    wagonSideMaterial,
+    wagonSideMaterial,
+    wagonSideMaterial,
+    bogieMaterial,
+    wagonSideMaterial,
+    wagonSideMaterial
+  ];
+
+  const createWagonMesh = (obstacle: Obstacle) => {
+    const group = new THREE.Group();
+    const cars = Math.round(obstacle.length / WAGON.carLength);
+    for (let i = 0; i < cars; i++) {
+      const center = -(i + 0.5) * WAGON.carLength;
+      const body = new THREE.Mesh(wagonBodyGeometry, wagonMaterials);
+      body.position.set(0, bodyBottom + (WAGON.height - bodyBottom) / 2, center);
+      const deck = new THREE.Mesh(wagonDeckGeometry, wagonDeckMaterial);
+      deck.position.set(0, WAGON.height + 0.02, center);
+      const bogie = new THREE.Mesh(wagonBogieGeometry, bogieMaterial);
+      bogie.position.set(0, bodyBottom / 2, center);
+      group.add(body, deck, bogie);
+    }
+    return group;
+  };
+
   const createObstacleMesh = (obstacle: Obstacle) => {
+    if (obstacle.kind === 'wagon') return createWagonMesh(obstacle);
     if (obstacle.kind === 'train' || obstacle.kind === 'movingTrain') return createTrainMesh(obstacle);
     const group = new THREE.Group();
     for (const piece of obstacleBoxes(obstacle)) {
@@ -606,7 +642,7 @@ export const createSubwayRushGame = (
       let group = obstacleMeshes.get(obstacle.id);
       if (!group) {
         group = createObstacleMesh(obstacle);
-        if (obstacle.kind === 'train' || obstacle.kind === 'movingTrain') group.position.x = laneX(obstacle.lane);
+        if (isVehicle(obstacle)) group.position.x = laneX(obstacle.lane);
         obstacleMeshes.set(obstacle.id, group);
         scene.add(group);
       }
@@ -641,7 +677,7 @@ export const createSubwayRushGame = (
     let count = 0;
     for (const coin of model.coins) {
       if (count >= MAX_COINS) break;
-      coinPosition.set(laneX(coin.lane), coin.y, -(coin.z - model.distance));
+      coinPosition.set(coin.x, coin.y, -(coin.z - model.distance));
       coinRotation.setFromAxisAngle(yAxis, time * 3 + coin.z * 0.25);
       coinMatrix.compose(coinPosition, coinRotation, coinScale);
       coinMesh.setMatrixAt(count++, coinMatrix);
