@@ -1,7 +1,7 @@
 // 座標系: x は右が正、y は上が正、z はプレイヤーの進行方向が正。単位はおおよそメートル。
 export const RULES = {
   laneWidth: 2.6,
-  runSpeed: 18,
+  runSpeed: 20,
   laneChangeSpeed: 19,
   gravity: 40,
   jumpVelocity: 13,
@@ -31,7 +31,7 @@ export const RULES = {
   coinSpacing: 2.2,
   coinScore: 5,
   coinsPerSpeedUp: 30,
-  speedStep: 1.5,
+  speedStep: 10,
   maxSpeedLevel: 5
 };
 
