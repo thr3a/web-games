@@ -45,9 +45,17 @@ const rectStyle = (rect: Rect): CssVars => ({
 
 // クリア演出（CLEAR! の文字、紙吹雪、終わりなく続く花火）。画面全体に canvas を重ねる。
 // 文字ごとに時間差で落とすため、何番目の文字かを CSS 変数で渡す。
-const CLEAR_LETTERS = [...'CLEAR!'].map((char, order) => ({ char, order }));
+const CLEAR_LETTERS = [...'クリッピー！'].map((char, order) => ({ char, order }));
 
 const letterStyle = (order: number): CssVars => ({ '--i': order });
+
+const CLEAR_PRAISES = ['お見事！', '見事な腕前！', '一刀両断！', '四角マスター！', 'お疲れさまでした！'];
+
+// クリア時にだけマウントされるので、クリアするたびに一言を選び直す。再描画では変えない。
+const ClearPraise = () => {
+  const [praise] = useState(() => CLEAR_PRAISES[Math.floor(Math.random() * CLEAR_PRAISES.length)]);
+  return <p className='shikaku-clear-sub'>{praise}</p>;
+};
 
 const ShikakuCelebration = () => {
   const confettiRef = useRef<HTMLCanvasElement>(null);
@@ -217,7 +225,7 @@ const ShikakuGame = ({ settings, initialBoard, debug, onBack }: GameProps) => {
                 </span>
               ))}
             </p>
-            <p className='shikaku-clear-sub'>お見事！</p>
+            <ClearPraise />
             <div className='shikaku-clear-actions'>
               <button type='button' className='shikaku-next' onClick={nextPuzzle}>
                 次の問題
