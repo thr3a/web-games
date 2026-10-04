@@ -1,11 +1,14 @@
 import { type CSSProperties, type PointerEvent, useEffect, useRef, useState } from 'react';
-import { generatePuzzle } from '../games/shikaku/generator';
+import { generatePuzzleByDifficulty } from '../games/shikaku/generator';
 import {
+  BOARD_SIZES,
   type Board,
   type Cell,
   clampCell,
   createBoard,
   DEFAULT_CONFIG,
+  DIFFICULTIES,
+  type Difficulty,
   RECT_COLORS,
   type Rect,
   rectAt,
@@ -16,7 +19,16 @@ import './Shikaku.css';
 
 type Drag = { pointerId: number; from: Cell; to: Cell };
 
-const newBoard = (): Board => createBoard(generatePuzzle(DEFAULT_CONFIG));
+type BoardSize = { width: number; height: number };
+
+type Settings = { size: BoardSize; difficulty: Difficulty };
+
+const newBoard = ({ size, difficulty }: Settings): Board =>
+  createBoard(generatePuzzleByDifficulty({ ...DEFAULT_CONFIG, ...size }, difficulty));
+
+const sizeLabel = (size: BoardSize): string => `${size.width}×${size.height}`;
+
+const sameSize = (a: BoardSize, b: BoardSize): boolean => a.width === b.width && a.height === b.height;
 
 // CSS 変数を style に渡すため、React の CSSProperties に無いキーを含む型にする。
 type CssVars = CSSProperties & Record<`--${string}`, string | number>;
@@ -28,20 +40,14 @@ const rectStyle = (rect: Rect): CssVars => ({
   '--h': rect.h
 });
 
-const Shikaku = () => {
-  const [board, setBoard] = useState<Board>(newBoard);
+type GameProps = { settings: Settings; onBack: () => void };
+
+const ShikakuGame = ({ settings, onBack }: GameProps) => {
+  const [board, setBoard] = useState<Board>(() => newBoard(settings));
   const [drag, setDrag] = useState<Drag | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const { puzzle } = board;
   const cleared = board.status === 'cleared';
-
-  useEffect(() => {
-    const previousTitle = document.title;
-    document.title = '四角に切れ';
-    return () => {
-      document.title = previousTitle;
-    };
-  }, []);
 
   // 画面上の座標を盤面のマス座標（小数あり）に変換する。盤面の外は selectionRect 側で収める。
   const cellFromPoint = (clientX: number, clientY: number): Cell | null => {
@@ -87,7 +93,7 @@ const Shikaku = () => {
   };
 
   const nextPuzzle = () => {
-    setBoard(newBoard());
+    setBoard(newBoard(settings));
     setDrag(null);
   };
 
@@ -99,8 +105,7 @@ const Shikaku = () => {
   const boardStyle: CssVars = { '--cols': puzzle.width, '--rows': puzzle.height };
 
   return (
-    <main className='shikaku-page'>
-      <h1 className='shikaku-title'>四角に切れ</h1>
+    <>
       <div
         ref={boardRef}
         className={`shikaku-board${cleared ? ' is-cleared' : ''}`}
@@ -136,11 +141,87 @@ const Shikaku = () => {
             <button type='button' className='shikaku-next' onClick={nextPuzzle}>
               次の問題
             </button>
+            <button type='button' className='shikaku-back' onClick={onBack}>
+              設定を選び直す
+            </button>
           </div>
         ) : (
           <p className='shikaku-hint'>ドラッグで四角を置く・タップで消す</p>
         )}
       </div>
+    </>
+  );
+};
+
+type StartProps = { settings: Settings; onChange: (settings: Settings) => void; onStart: () => void };
+
+const ShikakuStart = ({ settings, onChange, onStart }: StartProps) => (
+  <div className='shikaku-start'>
+    <section className='shikaku-option-group'>
+      <h2 className='shikaku-option-title'>盤面のサイズ</h2>
+      <div className='shikaku-options'>
+        {BOARD_SIZES.map((size) => (
+          <button
+            key={sizeLabel(size)}
+            type='button'
+            className='shikaku-option'
+            aria-pressed={sameSize(size, settings.size)}
+            onClick={() => onChange({ ...settings, size })}
+          >
+            {sizeLabel(size)}
+          </button>
+        ))}
+      </div>
+    </section>
+    <section className='shikaku-option-group'>
+      <h2 className='shikaku-option-title'>難易度</h2>
+      <div className='shikaku-options'>
+        {DIFFICULTIES.map((option) => (
+          <button
+            key={option.value}
+            type='button'
+            className='shikaku-option'
+            aria-pressed={option.value === settings.difficulty}
+            onClick={() => onChange({ ...settings, difficulty: option.value })}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </section>
+    <button type='button' className='shikaku-next shikaku-start-button' onClick={onStart}>
+      スタート
+    </button>
+  </div>
+);
+
+const Shikaku = () => {
+  const [settings, setSettings] = useState<Settings>({ size: BOARD_SIZES[0], difficulty: 'normal' });
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = '四角に切れ';
+    return () => {
+      document.title = previousTitle;
+    };
+  }, []);
+
+  const difficultyLabel = DIFFICULTIES.find((option) => option.value === settings.difficulty)?.label ?? '';
+
+  return (
+    <main className='shikaku-page'>
+      <h1 className='shikaku-title'>四角に切れ</h1>
+      {playing ? (
+        <>
+          <p className='shikaku-settings'>
+            {sizeLabel(settings.size)}・{difficultyLabel}
+          </p>
+          <ShikakuGame settings={settings} onBack={() => setPlaying(false)} />
+        </>
+      ) : (
+        <ShikakuStart settings={settings} onChange={setSettings} onStart={() => setPlaying(true)} />
+      )}
     </main>
   );
 };

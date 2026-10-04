@@ -140,6 +140,88 @@
 	box-shadow: inset 0 -2px 0 #bfae5a;
 }
 
+.shikaku-back {
+	padding: 8px 16px;
+	border: none;
+	background: none;
+	color: #7d8794;
+	font: inherit;
+	font-size: 14px;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.shikaku-settings {
+	margin: -12px 0 0;
+	font-size: 13px;
+	color: #7d8794;
+}
+
+.shikaku-start {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 28px;
+	width: min(100%, 360px);
+}
+
+.shikaku-option-group {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: 100%;
+}
+
+.shikaku-option-title {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 700;
+	color: #7d8794;
+	text-align: center;
+}
+
+.shikaku-options {
+	display: flex;
+	gap: 8px;
+}
+
+.shikaku-option {
+	flex: 1;
+	padding: 14px 0;
+	border: none;
+	border-radius: 14px;
+	background: var(--cell-bg);
+	box-shadow: inset 0 -5px 0 #22272e;
+	color: var(--clue);
+	font: inherit;
+	font-size: 17px;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.shikaku-option[aria-pressed="true"] {
+	background: #81977f;
+	box-shadow: inset 0 -5px 0 #667c64;
+	color: var(--clue-covered);
+}
+
+.shikaku-option:active {
+	transform: translateY(2px);
+	box-shadow: inset 0 -3px 0 #22272e;
+}
+
+.shikaku-option[aria-pressed="true"]:active {
+	box-shadow: inset 0 -3px 0 #667c64;
+}
+
+.shikaku-start-button {
+	margin-top: 8px;
+	padding: 14px 56px;
+	font-size: 18px;
+}
+
 .shikaku-board.is-cleared .shikaku-rect {
 	animation: shikaku-flash 0.6s ease-out both;
 }

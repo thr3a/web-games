@@ -1,8 +1,9 @@
 import { expect, test } from 'vitest';
-import { generatePuzzle, partition, stripPartition } from '../src/games/shikaku/generator';
+import { generatePuzzle, generatePuzzleByDifficulty, partition, stripPartition } from '../src/games/shikaku/generator';
 import {
   type Board,
   createBoard,
+  DIFFICULTIES,
   isFilled,
   isSolved,
   MAX_CLUE,
@@ -16,6 +17,7 @@ import {
   releaseSelection,
   selectionRect
 } from '../src/games/shikaku/model';
+import { rateDifficulty } from '../src/games/shikaku/rating';
 import { countSolutions, solve } from '../src/games/shikaku/solver';
 
 const seeded = (initial: number) => {
@@ -424,4 +426,39 @@ test('色: 隣り合う四角には違う色を付ける', () => {
       if (a !== b && rectsAdjacent(a, b)) expect(a.color).not.toBe(b.color);
     }
   }
+});
+
+test('難易度判定: 置き方が1通りの数字だけで解ける問題は段階 1', () => {
+  expect(rateDifficulty(small.width, small.height, small.clues)).toBe(1);
+});
+
+test('難易度判定: 解が2通りある問題は段階 4', () => {
+  // 2x2 に 2 が2つ（縦2本でも横2本でも解ける）。
+  const clues = [
+    { x: 0, y: 0, value: 2 },
+    { x: 1, y: 1, value: 2 }
+  ];
+  expect(countSolutions(2, 2, clues, 2)).toBe(2);
+  expect(rateDifficulty(2, 2, clues)).toBe(4);
+});
+
+test('難易度指定の生成: 選んだ難易度の段階になり、解は1通り', () => {
+  for (const size of [
+    { width: 9, height: 9 },
+    { width: 10, height: 12 }
+  ]) {
+    for (const option of DIFFICULTIES) {
+      for (let seed = 1; seed <= 3; seed += 1) {
+        const puzzle = generatePuzzleByDifficulty(size, option.value, seeded(seed));
+        expectUniquePuzzle(puzzle, size.width, size.height);
+        expect(rateDifficulty(size.width, size.height, puzzle.clues)).toBe(option.level);
+      }
+    }
+  }
+});
+
+test('難易度指定の生成: 狙った段階が出ない盤面でも必ず解ける問題を返す', () => {
+  // 2x1 は段階 1 の問題しか作れない。
+  const puzzle = generatePuzzleByDifficulty({ width: 2, height: 1 }, 'hard', seeded(1));
+  expectValidPuzzle(puzzle, 2, 1);
 });

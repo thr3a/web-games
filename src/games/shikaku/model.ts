@@ -43,6 +43,21 @@ export const DEFAULT_CONFIG: ShikakuConfig = {
   sizeBias: 1.5
 };
 
+// 最初の画面で選べる盤面サイズ。幅と高さ以外は DEFAULT_CONFIG を使う。
+export const BOARD_SIZES: { width: number; height: number }[] = [
+  { width: 9, height: 9 },
+  { width: 10, height: 12 }
+];
+
+export type Difficulty = 'easy' | 'normal' | 'hard';
+
+// 最初の画面で選べる難易度。level は rateDifficulty の段階で、この段階の推論がちょうど必要な問題を出す。
+export const DIFFICULTIES: { value: Difficulty; label: string; level: 1 | 2 | 3 }[] = [
+  { value: 'easy', label: 'かんたん', level: 1 },
+  { value: 'normal', label: 'ふつう', level: 2 },
+  { value: 'hard', label: 'むずかしい', level: 3 }
+];
+
 // 置いた四角の色（参考画像のテイストに合わせた落ち着いたパステル系）。fill が面、shade が下側の厚み。
 export const RECT_COLORS = [
   { fill: '#d5c87f', shade: '#bfae5a' },

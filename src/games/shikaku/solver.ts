@@ -7,10 +7,10 @@ export type SolveResult = {
   solutions: Rect[][];
 };
 
-type Candidate = { clue: number; rect: Rect; cells: number[] };
+export type Candidate = { clue: number; rect: Rect; cells: number[] };
 
 // 数字ごとに、その数字だけを含み面積が一致する長方形をすべて列挙する。
-const listCandidates = (width: number, height: number, clues: Clue[]): Candidate[][] => {
+export const listCandidates = (width: number, height: number, clues: Clue[]): Candidate[][] => {
   const clueAt = new Int32Array(width * height).fill(-1);
   clues.forEach((clue, index) => {
     clueAt[clue.y * width + clue.x] = index;

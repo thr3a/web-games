@@ -1,6 +1,8 @@
 import {
   type Clue,
   DEFAULT_CONFIG,
+  DIFFICULTIES,
+  type Difficulty,
   MAX_CLUE,
   MIN_AREA,
   type Puzzle,
@@ -8,11 +10,14 @@ import {
   type ShikakuConfig,
   sameRect
 } from './model';
+import { rateDifficulty } from './rating';
 import { solve } from './solver';
 
 // 数字の位置を選び直す回数。超えたら別解があるまま採用する。
 const MAX_REPAIR_ROUNDS = 30;
 const MAX_PARTITION_ATTEMPTS = 1000;
+// 難易度に合う問題を探して生成する回数。むずかしい（約 3〜5%）でも外れる確率はごく小さい。
+const MAX_DIFFICULTY_ATTEMPTS = 300;
 // maxArea の下限。
 const MIN_MAX_AREA = 3;
 // 分割中、この大きさ以下の閉じた空き領域は長方形で埋められるかを確かめる。
@@ -250,4 +255,23 @@ export const generatePuzzle = (config: Partial<ShikakuConfig> = {}, rng: () => n
     });
   }
   return { width, height, clues, solution };
+};
+
+// 難易度に合う問題を作る。問題を生成して段階を測り、狙った段階になるまで作り直す。
+// 一定回数で見つからなければ、それまでで最も近い段階の問題を返す（段階 4 は別解がある可能性が高いので最後の手段）。
+export const generatePuzzleByDifficulty = (
+  config: Partial<ShikakuConfig>,
+  difficulty: Difficulty,
+  rng: () => number = Math.random
+): Puzzle => {
+  const target = DIFFICULTIES.find((option) => option.value === difficulty)?.level ?? 2;
+  const distance = (level: number): number => (level === 4 ? Number.POSITIVE_INFINITY : Math.abs(level - target));
+  let best: { puzzle: Puzzle; distance: number } | null = null;
+  for (let attempt = 0; attempt < MAX_DIFFICULTY_ATTEMPTS; attempt += 1) {
+    const puzzle = generatePuzzle(config, rng);
+    const level = rateDifficulty(puzzle.width, puzzle.height, puzzle.clues);
+    if (level === target) return puzzle;
+    if (!best || distance(level) < best.distance) best = { puzzle, distance: distance(level) };
+  }
+  return best ? best.puzzle : generatePuzzle(config, rng);
 };
