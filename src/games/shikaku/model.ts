@@ -37,8 +37,8 @@ export const MAX_CLUE = 12;
 export const MIN_AREA = 2;
 
 export const DEFAULT_CONFIG: ShikakuConfig = {
-  width: 9,
-  height: 9,
+  width: 10,
+  height: 12,
   maxArea: 12,
   sizeBias: 1.5
 };

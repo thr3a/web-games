@@ -191,9 +191,9 @@ const expectUniquePuzzle = (puzzle: Puzzle, width: number, height: number) => {
   expect(countSolutions(width, height, puzzle.clues, 2)).toBe(1);
 };
 
-test('生成: 9x9 の問題はどれも解が1通り', () => {
+test('生成: 初期設定（10x12）の問題はどれも解が1通り', () => {
   for (let seed = 1; seed <= 20; seed += 1) {
-    expectUniquePuzzle(generatePuzzle({}, seeded(seed)), 9, 9);
+    expectUniquePuzzle(generatePuzzle({}, seeded(seed)), 10, 12);
   }
 });
 
@@ -251,7 +251,7 @@ test('生成: 最大面積は 12 を超えない（設定で大きくしても�
 test('生成: 最大面積を小さくするとそれ以下の長方形だけになる', () => {
   const puzzle = generatePuzzle({ maxArea: 4 }, seeded(8));
   expect(Math.max(...puzzle.clues.map((clue) => clue.value))).toBeLessThanOrEqual(4);
-  expectUniquePuzzle(puzzle, 9, 9);
+  expectUniquePuzzle(puzzle, 10, 12);
 });
 
 test('生成: 同じ乱数なら同じ問題になる', () => {
