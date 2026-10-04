@@ -45,6 +45,7 @@ export const DEFAULT_CONFIG: ShikakuConfig = {
 
 // 最初の画面で選べる盤面サイズ。幅と高さ以外は DEFAULT_CONFIG を使う。
 export const BOARD_SIZES: { width: number; height: number }[] = [
+  { width: 6, height: 6 },
   { width: 9, height: 9 },
   { width: 10, height: 12 }
 ];

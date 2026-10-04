@@ -390,7 +390,7 @@ const ShikakuStart = ({ settings, onChange, onStart }: StartProps) => (
 const Shikaku = () => {
   // 保存データがあればスタート画面を飛ばして途中から再開する。
   const [saved] = useState(loadGame);
-  const [settings, setSettings] = useState<Settings>(saved?.settings ?? { size: BOARD_SIZES[0], difficulty: 'normal' });
+  const [settings, setSettings] = useState<Settings>(saved?.settings ?? { size: BOARD_SIZES[1], difficulty: 'normal' });
   const [playing, setPlaying] = useState(saved !== null);
   // ?debug を付けて開くと、クリア演出を確認するための裏口ボタンが出る。
   const [debug] = useState(() => new URLSearchParams(window.location.search).has('debug'));
