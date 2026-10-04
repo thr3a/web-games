@@ -110,8 +110,9 @@
 .shikaku-footer {
 	min-height: 40px;
 	display: flex;
-	align-items: flex-start;
-	justify-content: center;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
 }
 
 .shikaku-hint {
@@ -142,16 +143,53 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 12px;
-	animation: shikaku-pop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+	gap: 4px;
 }
 
 .shikaku-clear-message {
 	margin: 0;
-	font-size: 32px;
-	font-weight: 800;
-	letter-spacing: 0.1em;
-	color: var(--accent);
+	font-size: 44px;
+	font-weight: 900;
+	line-height: 1.2;
+	letter-spacing: 0.04em;
+	color: #f3e08f;
+	text-shadow:
+		0 4px 0 #a8913a,
+		0 0 24px rgb(243 224 143 / 0.5);
+}
+
+/* 文字が1つずつ上から落ちてくる。 */
+.shikaku-clear-message span {
+	display: inline-block;
+	animation: shikaku-letter-drop 0.65s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+	animation-delay: calc(0.2s + var(--i) * 0.07s);
+}
+
+.shikaku-clear-sub {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 700;
+	color: #aab4c0;
+	animation: shikaku-fade-in 0.5s ease-out 1.4s both;
+}
+
+.shikaku-clear-actions {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	margin-top: 8px;
+	animation: shikaku-fade-in 0.5s ease-out 1.8s both;
+}
+
+/* 画面全体に重ねる演出用の canvas。操作は邪魔しない。 */
+.shikaku-fx {
+	position: fixed;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: 10;
 }
 
 .shikaku-next {
@@ -304,6 +342,91 @@
 	animation: shikaku-flash 0.6s ease-out both;
 }
 
+/* クリアしたとき、四角が左上から順に弾む。 */
+.shikaku-board.is-celebrating .shikaku-rect {
+	animation: shikaku-rect-pop 0.48s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+	animation-delay: calc(var(--i) * 90ms);
+}
+
+/* 弾み終わったあと、光が盤面を横切る。1秒ごとに繰り返す。 */
+.shikaku-glint {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.shikaku-glint::before {
+	content: "";
+	position: absolute;
+	top: -20%;
+	bottom: -20%;
+	left: -60%;
+	width: 40%;
+	transform: skewX(-20deg);
+	background: linear-gradient(
+		90deg,
+		transparent,
+		rgb(255 255 255 / 0.85),
+		transparent
+	);
+	opacity: 0;
+	animation: shikaku-glint 2s ease-in-out 2.6s infinite;
+}
+
+@keyframes shikaku-letter-drop {
+	from {
+		opacity: 0;
+		transform: translateY(-60px) scale(1.6);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes shikaku-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes shikaku-rect-pop {
+	0% {
+		transform: scale(1);
+		filter: brightness(1);
+	}
+	40% {
+		transform: scale(1.15);
+		filter: brightness(1.5);
+	}
+	100% {
+		transform: scale(1);
+		filter: brightness(1);
+	}
+}
+
+@keyframes shikaku-glint {
+	0% {
+		left: -60%;
+		opacity: 1;
+	}
+	70% {
+		left: 130%;
+		opacity: 1;
+	}
+	71%,
+	100% {
+		left: 130%;
+		opacity: 0;
+	}
+}
+
 @keyframes shikaku-pop {
 	from {
 		opacity: 0;
@@ -324,5 +447,15 @@
 	}
 	100% {
 		filter: brightness(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.shikaku-board.is-celebrating .shikaku-rect,
+	.shikaku-clear-message span,
+	.shikaku-clear-sub,
+	.shikaku-clear-actions,
+	.shikaku-glint::before {
+		animation: none;
 	}
 }

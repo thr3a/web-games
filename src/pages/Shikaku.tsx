@@ -1,4 +1,5 @@
 import { type CSSProperties, type PointerEvent, useEffect, useRef, useState } from 'react';
+import { startCelebration } from '../games/shikaku/celebration';
 import { generatePuzzleByDifficulty } from '../games/shikaku/generator';
 import {
   BOARD_SIZES,
@@ -9,6 +10,7 @@ import {
   DEFAULT_CONFIG,
   DIFFICULTIES,
   type Difficulty,
+  placeRect,
   RECT_COLORS,
   type Rect,
   rectAt,
@@ -41,9 +43,40 @@ const rectStyle = (rect: Rect): CssVars => ({
   '--h': rect.h
 });
 
-type GameProps = { settings: Settings; initialBoard: Board | null; onBack: () => void };
+// クリア演出（CLEAR! の文字、紙吹雪、終わりなく続く花火）。画面全体に canvas を重ねる。
+// 文字ごとに時間差で落とすため、何番目の文字かを CSS 変数で渡す。
+const CLEAR_LETTERS = [...'CLEAR!'].map((char, order) => ({ char, order }));
 
-const ShikakuGame = ({ settings, initialBoard, onBack }: GameProps) => {
+const letterStyle = (order: number): CssVars => ({ '--i': order });
+
+const ShikakuCelebration = () => {
+  const confettiRef = useRef<HTMLCanvasElement>(null);
+  const fireworksRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const confetti = confettiRef.current;
+    const fireworks = fireworksRef.current;
+    if (!confetti || !fireworks) return;
+    // 動きを減らす設定では canvas の演出は出さない。
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    return startCelebration(confetti, fireworks);
+  }, []);
+
+  return (
+    <>
+      <canvas ref={confettiRef} className='shikaku-fx' />
+      <canvas ref={fireworksRef} className='shikaku-fx' />
+    </>
+  );
+};
+
+// 四角を左上から順に光らせるため、x + y の小さい順に並べた順位を返す。
+const wavePosition = (rects: Rect[], rect: Rect): number =>
+  rects.filter((other) => other.x + other.y < rect.x + rect.y).length;
+
+type GameProps = { settings: Settings; initialBoard: Board | null; debug: boolean; onBack: () => void };
+
+const ShikakuGame = ({ settings, initialBoard, debug, onBack }: GameProps) => {
   const [board, setBoard] = useState<Board>(() => initialBoard ?? newBoard(settings));
   const [drag, setDrag] = useState<Drag | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -114,6 +147,12 @@ const ShikakuGame = ({ settings, initialBoard, onBack }: GameProps) => {
     onBack();
   };
 
+  // 裏口: 解答の四角をすべて置いてクリア状態にする（クリア演出の確認用）。
+  const fillSolution = () => {
+    setBoard(puzzle.solution.reduce((current, rect) => placeRect(current, rect), board));
+    setDrag(null);
+  };
+
   const selection = drag ? selectionRect(puzzle, drag.from, drag.to) : null;
   const cells = Array.from({ length: puzzle.width * puzzle.height }, (_, i) => ({
     x: i % puzzle.width,
@@ -136,7 +175,7 @@ const ShikakuGame = ({ settings, initialBoard, onBack }: GameProps) => {
       </div>
       <div
         ref={boardRef}
-        className={`shikaku-board${cleared ? ' is-cleared' : ''}`}
+        className={`shikaku-board${cleared ? ' is-cleared is-celebrating' : ''}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -147,7 +186,12 @@ const ShikakuGame = ({ settings, initialBoard, onBack }: GameProps) => {
         ))}
         {board.rects.map((rect) => {
           const color = RECT_COLORS[rect.color];
-          const style: CssVars = { ...rectStyle(rect), '--fill': color.fill, '--shade': color.shade };
+          const style: CssVars = {
+            ...rectStyle(rect),
+            '--fill': color.fill,
+            '--shade': color.shade,
+            '--i': wavePosition(board.rects, rect)
+          };
           return <div key={rect.id} className='shikaku-rect' style={style} />;
         })}
         {selection && <div className='shikaku-selection' style={rectStyle(selection)} />}
@@ -160,20 +204,38 @@ const ShikakuGame = ({ settings, initialBoard, onBack }: GameProps) => {
             {clue.value}
           </div>
         ))}
+        {cleared && <div className='shikaku-glint' />}
       </div>
       <div className='shikaku-footer'>
         {cleared ? (
           <div className='shikaku-clear' role='status'>
-            <p className='shikaku-clear-message'>クリア！</p>
-            <button type='button' className='shikaku-next' onClick={nextPuzzle}>
-              次の問題
-            </button>
-            <button type='button' className='shikaku-back' onClick={onBack}>
-              設定を選び直す
-            </button>
+            <ShikakuCelebration />
+            <p className='shikaku-clear-message'>
+              {CLEAR_LETTERS.map((letter) => (
+                <span key={letter.order} style={letterStyle(letter.order)}>
+                  {letter.char}
+                </span>
+              ))}
+            </p>
+            <p className='shikaku-clear-sub'>お見事！</p>
+            <div className='shikaku-clear-actions'>
+              <button type='button' className='shikaku-next' onClick={nextPuzzle}>
+                次の問題
+              </button>
+              <button type='button' className='shikaku-back' onClick={onBack}>
+                設定を選び直す
+              </button>
+            </div>
           </div>
         ) : (
-          <p className='shikaku-hint'>ドラッグで四角を置く・タップで消す</p>
+          <>
+            <p className='shikaku-hint'>ドラッグで四角を置く・タップで消す</p>
+            {debug && (
+              <button type='button' className='shikaku-back' onClick={fillSolution}>
+                【裏口】解答で埋めてクリア
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -330,6 +392,8 @@ const Shikaku = () => {
   const [saved] = useState(loadGame);
   const [settings, setSettings] = useState<Settings>(saved?.settings ?? { size: BOARD_SIZES[0], difficulty: 'normal' });
   const [playing, setPlaying] = useState(saved !== null);
+  // ?debug を付けて開くと、クリア演出を確認するための裏口ボタンが出る。
+  const [debug] = useState(() => new URLSearchParams(window.location.search).has('debug'));
   const [restoredBoard, setRestoredBoard] = useState<Board | null>(saved?.board ?? null);
 
   useEffect(() => {
@@ -343,7 +407,7 @@ const Shikaku = () => {
   return (
     <main className='shikaku-page'>
       {playing ? (
-        <ShikakuGame settings={settings} initialBoard={restoredBoard} onBack={() => setPlaying(false)} />
+        <ShikakuGame settings={settings} initialBoard={restoredBoard} debug={debug} onBack={() => setPlaying(false)} />
       ) : (
         <>
           <h1 className='shikaku-title'>四角に切れ</h1>
