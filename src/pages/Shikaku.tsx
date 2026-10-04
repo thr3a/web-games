@@ -180,10 +180,113 @@ const ShikakuGame = ({ settings, initialBoard, onBack }: GameProps) => {
   );
 };
 
+// スタート画面のデモ。指でドラッグして四角を置く操作を、小さな盤面で繰り返し見せる。
+const DEMO_SIZE = 5;
+// 置く順に並べている。数字は四角ごとの面積。
+const DEMO_PLACEMENTS: { rect: Rect; clue: Cell }[] = [
+  { rect: { x: 0, y: 0, w: 2, h: 2 }, clue: { x: 1, y: 1 } },
+  { rect: { x: 2, y: 0, w: 3, h: 2 }, clue: { x: 3, y: 0 } },
+  { rect: { x: 3, y: 2, w: 2, h: 3 }, clue: { x: 4, y: 4 } },
+  { rect: { x: 0, y: 2, w: 3, h: 1 }, clue: { x: 1, y: 2 } },
+  { rect: { x: 0, y: 3, w: 3, h: 2 }, clue: { x: 0, y: 4 } }
+];
+
+type DemoState = {
+  placed: number;
+  round: number;
+  selection: { key: number; rect: Rect } | null;
+  finger: Cell | null;
+  pressing: boolean;
+  flash: boolean;
+};
+
+const DEMO_INITIAL: DemoState = { placed: 0, round: 0, selection: null, finger: null, pressing: false, flash: false };
+
+const ShikakuDemo = () => {
+  const [demo, setDemo] = useState<DemoState>(DEMO_INITIAL);
+  // 指の位置は消えるときも残し、次に現れるときに前の位置から滑らかに動かす。
+  const lastFinger = useRef<Cell>({ x: 2, y: 2 });
+  if (demo.finger) lastFinger.current = demo.finger;
+
+  useEffect(() => {
+    // 動きを減らす設定では、完成した盤面を静止させて見せる。
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDemo({ ...DEMO_INITIAL, placed: DEMO_PLACEMENTS.length });
+      return;
+    }
+    const timers: number[] = [];
+    // クリーンアップで全タイマーを止めると、待機中の Promise は解決されずにループが止まる。
+    const wait = (ms: number) => new Promise<void>((resolve) => timers.push(window.setTimeout(resolve, ms)));
+    const update = (patch: Partial<DemoState>) => setDemo((current) => ({ ...current, ...patch }));
+    const run = async () => {
+      for (let round = 0; ; round++) {
+        setDemo({ ...DEMO_INITIAL, round });
+        await wait(600);
+        for (const [i, { rect }] of DEMO_PLACEMENTS.entries()) {
+          update({ finger: { x: rect.x, y: rect.y } });
+          await wait(650);
+          update({ pressing: true, selection: { key: i, rect: { x: rect.x, y: rect.y, w: 1, h: 1 } } });
+          await wait(120);
+          update({ selection: { key: i, rect }, finger: { x: rect.x + rect.w - 1, y: rect.y + rect.h - 1 } });
+          await wait(650);
+          update({ pressing: false, selection: null, placed: i + 1 });
+          await wait(250);
+        }
+        update({ finger: null, flash: true });
+        await wait(1800);
+      }
+    };
+    void run();
+    return () => {
+      for (const timer of timers) window.clearTimeout(timer);
+    };
+  }, []);
+
+  const style: CssVars = { '--cols': DEMO_SIZE, '--rows': DEMO_SIZE };
+  const fingerCell = demo.finger ?? lastFinger.current;
+  const fingerStyle: CssVars = { '--x': fingerCell.x, '--y': fingerCell.y };
+  const cells = Array.from({ length: DEMO_SIZE * DEMO_SIZE }, (_, i) => ({
+    x: i % DEMO_SIZE,
+    y: Math.floor(i / DEMO_SIZE)
+  }));
+
+  return (
+    <div className='shikaku-demo' style={style} aria-hidden='true'>
+      <div className={`shikaku-board${demo.flash ? ' is-cleared' : ''}`}>
+        {cells.map((cell) => (
+          <div key={`${cell.x}-${cell.y}`} className='shikaku-cell' style={rectStyle({ ...cell, w: 1, h: 1 })} />
+        ))}
+        {DEMO_PLACEMENTS.slice(0, demo.placed).map(({ rect }, i) => {
+          const color = RECT_COLORS[(i + demo.round * 2) % RECT_COLORS.length];
+          const rectVars: CssVars = { ...rectStyle(rect), '--fill': color.fill, '--shade': color.shade };
+          return <div key={`${demo.round}-${i}`} className='shikaku-rect shikaku-demo-rect' style={rectVars} />;
+        })}
+        {demo.selection && (
+          <div key={demo.selection.key} className='shikaku-selection' style={rectStyle(demo.selection.rect)} />
+        )}
+        {DEMO_PLACEMENTS.map(({ rect, clue }, i) => (
+          <div
+            key={`${clue.x}-${clue.y}`}
+            className={`shikaku-clue${i < demo.placed ? ' is-covered' : ''}`}
+            style={rectStyle({ ...clue, w: 1, h: 1 })}
+          >
+            {rect.w * rect.h}
+          </div>
+        ))}
+        <div
+          className={`shikaku-finger${demo.pressing ? ' is-pressing' : ''}`}
+          style={{ ...fingerStyle, opacity: demo.finger ? 1 : 0 }}
+        />
+      </div>
+    </div>
+  );
+};
+
 type StartProps = { settings: Settings; onChange: (settings: Settings) => void; onStart: () => void };
 
 const ShikakuStart = ({ settings, onChange, onStart }: StartProps) => (
   <div className='shikaku-start'>
+    <ShikakuDemo />
     <section className='shikaku-option-group'>
       <h2 className='shikaku-option-title'>盤面のサイズ</h2>
       <div className='shikaku-options'>

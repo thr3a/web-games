@@ -26,10 +26,10 @@
 
 .shikaku-title {
 	margin: 0;
-	font-size: 20px;
-	font-weight: 700;
+	font-size: clamp(34px, 11vw, 48px);
+	font-weight: 800;
 	letter-spacing: 0.1em;
-	color: #aab4c0;
+	color: var(--clue);
 }
 
 .shikaku-game {
@@ -253,6 +253,51 @@
 	margin-top: 8px;
 	padding: 14px 56px;
 	font-size: 18px;
+}
+
+.shikaku-demo {
+	width: min(60%, 200px);
+}
+
+.shikaku-demo .shikaku-board {
+	cursor: default;
+	pointer-events: none;
+}
+
+.shikaku-demo-rect {
+	animation: shikaku-pop 0.38s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+.shikaku-demo .shikaku-selection {
+	transition:
+		width 0.5s ease,
+		height 0.5s ease;
+}
+
+.shikaku-finger {
+	position: absolute;
+	/* 指を置いているマスの中心に重ねる。 */
+	left: calc((var(--x) + 0.5) * var(--cell));
+	top: calc((var(--y) + 0.5) * var(--cell));
+	width: calc(var(--cell) * 0.9);
+	height: calc(var(--cell) * 0.9);
+	margin: calc(var(--cell) * -0.45) 0 0 calc(var(--cell) * -0.45);
+	border-radius: 50%;
+	background: radial-gradient(
+		circle,
+		rgb(255 255 255 / 0.85) 0 30%,
+		rgb(255 255 255 / 0.3) 31% 100%
+	);
+	pointer-events: none;
+	transition:
+		left 0.5s ease,
+		top 0.5s ease,
+		transform 0.15s,
+		opacity 0.3s;
+}
+
+.shikaku-finger.is-pressing {
+	transform: scale(0.8);
 }
 
 .shikaku-board.is-cleared .shikaku-rect {
