@@ -32,10 +32,24 @@
 	color: #aab4c0;
 }
 
+.shikaku-game {
+	/* 画面幅に合わせつつ、縦長でない画面でも高さに収まるようにする。ヘッダー・フッター分を差し引く。 */
+	width: min(100%, 560px, calc((100dvh - 190px) * var(--cols) / var(--rows)));
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.shikaku-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 36px;
+}
+
 .shikaku-board {
 	position: relative;
-	/* 画面幅に合わせつつ、縦長でない画面でも高さに収まるようにする。 */
-	width: min(100%, 560px, calc((100dvh - 200px) * var(--cols) / var(--rows)));
+	width: 100%;
 	aspect-ratio: var(--cols) / var(--rows);
 	container-type: inline-size;
 	touch-action: none;
@@ -94,7 +108,7 @@
 }
 
 .shikaku-footer {
-	min-height: 96px;
+	min-height: 40px;
 	display: flex;
 	align-items: flex-start;
 	justify-content: center;
@@ -102,15 +116,26 @@
 
 .shikaku-hint {
 	margin: 0;
-	font-size: 14px;
+	font-size: 13px;
 	color: #7d8794;
 }
 
-.shikaku-playing {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 4px;
+.shikaku-retire {
+	padding: 8px 16px;
+	border: none;
+	border-radius: 999px;
+	background: var(--cell-bg);
+	box-shadow: inset 0 -3px 0 #22272e;
+	color: var(--clue);
+	font: inherit;
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.shikaku-retire:active {
+	transform: translateY(2px);
+	box-shadow: inset 0 -1px 0 #22272e;
 }
 
 .shikaku-clear {
@@ -159,9 +184,10 @@
 }
 
 .shikaku-settings {
-	margin: -12px 0 0;
-	font-size: 13px;
-	color: #7d8794;
+	margin: 0;
+	font-size: 16px;
+	font-weight: 700;
+	color: #aab4c0;
 }
 
 .shikaku-start {

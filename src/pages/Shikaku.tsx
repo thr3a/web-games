@@ -119,14 +119,24 @@ const ShikakuGame = ({ settings, initialBoard, onBack }: GameProps) => {
     x: i % puzzle.width,
     y: Math.floor(i / puzzle.width)
   }));
-  const boardStyle: CssVars = { '--cols': puzzle.width, '--rows': puzzle.height };
+  const gameStyle: CssVars = { '--cols': puzzle.width, '--rows': puzzle.height };
+  const difficultyLabel = DIFFICULTIES.find((option) => option.value === settings.difficulty)?.label ?? '';
 
   return (
-    <>
+    <div className='shikaku-game' style={gameStyle}>
+      <div className='shikaku-header'>
+        <p className='shikaku-settings'>
+          {sizeLabel(settings.size)}・{difficultyLabel}
+        </p>
+        {!cleared && (
+          <button type='button' className='shikaku-retire' onClick={retire}>
+            リタイア
+          </button>
+        )}
+      </div>
       <div
         ref={boardRef}
         className={`shikaku-board${cleared ? ' is-cleared' : ''}`}
-        style={boardStyle}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -163,15 +173,10 @@ const ShikakuGame = ({ settings, initialBoard, onBack }: GameProps) => {
             </button>
           </div>
         ) : (
-          <div className='shikaku-playing'>
-            <p className='shikaku-hint'>ドラッグで四角を置く・タップで消す</p>
-            <button type='button' className='shikaku-back' onClick={retire}>
-              リタイア
-            </button>
-          </div>
+          <p className='shikaku-hint'>ドラッグで四角を置く・タップで消す</p>
         )}
       </div>
-    </>
+    </div>
   );
 };
 
@@ -232,27 +237,22 @@ const Shikaku = () => {
     };
   }, []);
 
-  const difficultyLabel = DIFFICULTIES.find((option) => option.value === settings.difficulty)?.label ?? '';
-
   return (
     <main className='shikaku-page'>
-      <h1 className='shikaku-title'>四角に切れ</h1>
       {playing ? (
-        <>
-          <p className='shikaku-settings'>
-            {sizeLabel(settings.size)}・{difficultyLabel}
-          </p>
-          <ShikakuGame settings={settings} initialBoard={restoredBoard} onBack={() => setPlaying(false)} />
-        </>
+        <ShikakuGame settings={settings} initialBoard={restoredBoard} onBack={() => setPlaying(false)} />
       ) : (
-        <ShikakuStart
-          settings={settings}
-          onChange={setSettings}
-          onStart={() => {
-            setRestoredBoard(null);
-            setPlaying(true);
-          }}
-        />
+        <>
+          <h1 className='shikaku-title'>四角に切れ</h1>
+          <ShikakuStart
+            settings={settings}
+            onChange={setSettings}
+            onStart={() => {
+              setRestoredBoard(null);
+              setPlaying(true);
+            }}
+          />
+        </>
       )}
     </main>
   );
