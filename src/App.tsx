@@ -6,6 +6,7 @@ import NotFound from './pages/NotFound';
 
 const Houdai = lazy(() => import('./pages/Houdai'));
 const SubwayRush = lazy(() => import('./pages/SubwayRush'));
+const Shikaku = lazy(() => import('./pages/Shikaku'));
 
 const App = () => {
   return (
@@ -26,6 +27,14 @@ const App = () => {
           element={
             <Suspense fallback={<p role='status'>ゲームを読み込んでいます…</p>}>
               <SubwayRush />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/shikaku'
+          element={
+            <Suspense fallback={<p role='status'>ゲームを読み込んでいます…</p>}>
+              <Shikaku />
             </Suspense>
           }
         />
