@@ -237,3 +237,30 @@
 	font-size: 13px;
 	color: var(--muted);
 }
+
+.palm-guide {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px;
+	border-radius: 12px;
+	background: var(--surface);
+}
+
+.palm-terms {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 6px 12px;
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.palm-terms dt {
+	font-weight: 800;
+	color: var(--accent);
+}
+
+.palm-terms dd {
+	margin: 0;
+}

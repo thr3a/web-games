@@ -10,9 +10,22 @@ type Screen = { name: 'start' } | { name: 'play'; questions: Question[] } | { na
 
 type StartProps = { onStart: () => void };
 
+// スタート画面の地図で、目印として最初から点灯しておく店
+const LANDMARK_NAMES = ['マクドナルド', 'カメラのキタムラ', 'ケンタッキー', 'AOKI', '大黒屋'];
+const LANDMARKS = SHOPS.filter((shop) => LANDMARK_NAMES.includes(shop.name));
+
 const PalmStart = ({ onStart }: StartProps) => (
   <div className='palm-start'>
-    <p className='palm-lead'>武蔵小山パルム商店街の店の場所を覚えよう。全{QUESTION_COUNT}問です。</p>
+    <section className='palm-guide'>
+      <p className='palm-lead'>武蔵小山パルム商店街の店の場所を覚えよう。全{QUESTION_COUNT}問です。</p>
+      <HorizontalBandMap shops={SHOPS} marked={LANDMARKS} />
+      <dl className='palm-terms'>
+        <dt>エリア</dt>
+        <dd>商店街を駅側から 4 つに分けたもの。PALM-1〜PALM-4 の 4 エリアです。</dd>
+        <dt>区画</dt>
+        <dd>エリアをさらに左側・右側に分けたもの。例: 「PALM-2 左側」。4 エリア × 左右で全 8 区画です。</dd>
+      </dl>
+    </section>
     <button type='button' className='palm-primary' onClick={onStart}>
       スタート
     </button>
