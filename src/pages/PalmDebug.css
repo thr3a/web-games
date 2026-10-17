@@ -1,0 +1,44 @@
+.palm-debug {
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding: calc(16px + env(safe-area-inset-top)) 16px
+		calc(24px + env(safe-area-inset-bottom));
+	background: #fff;
+	color: #212529;
+	font-family:
+		"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo,
+		sans-serif;
+}
+
+.palm-debug-title {
+	margin: 0;
+	font-size: 20px;
+}
+
+.palm-debug-controls,
+.palm-debug-map {
+	width: min(100%, 420px);
+}
+
+.palm-debug-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.palm-debug-input {
+	padding: 10px;
+	border: 1px solid #ced4da;
+	border-radius: 8px;
+	font: inherit;
+	font-size: 16px;
+}
+
+.palm-debug-detail {
+	margin: 0;
+	font-size: 14px;
+	color: #495057;
+}

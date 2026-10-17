@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { type Difficulty, describeShops, makeQuestions, QUESTION_COUNT, type Question } from '../games/palm/model';
+import { describeShops, makeQuestions, QUESTION_COUNT, type Question } from '../games/palm/model';
 import { SHOPS } from '../games/palm/shops';
 import './Palm.css';
 
@@ -7,33 +7,11 @@ type Answer = { question: Question; chosen: number; correct: boolean };
 
 type Screen = { name: 'start' } | { name: 'play'; questions: Question[] } | { name: 'result'; answers: Answer[] };
 
-const DIFFICULTIES: { value: Difficulty; label: string; note: string }[] = [
-  { value: 1, label: '難易度1', note: '駅→中原街道の向きだけ。駅側どっちは別ブロックから' },
-  { value: 2, label: '難易度2', note: '帰り道の向きも出る。駅側どっちは同じ区画から' }
-];
+type StartProps = { onStart: () => void };
 
-type StartProps = { difficulty: Difficulty; onChange: (difficulty: Difficulty) => void; onStart: () => void };
-
-const PalmStart = ({ difficulty, onChange, onStart }: StartProps) => (
+const PalmStart = ({ onStart }: StartProps) => (
   <div className='palm-start'>
     <p className='palm-lead'>武蔵小山パルム商店街の店の場所を覚えよう。全{QUESTION_COUNT}問です。</p>
-    <section className='palm-option-group'>
-      <h2 className='palm-option-title'>難易度</h2>
-      <div className='palm-options'>
-        {DIFFICULTIES.map((option) => (
-          <button
-            key={option.value}
-            type='button'
-            className='palm-option'
-            aria-pressed={option.value === difficulty}
-            onClick={() => onChange(option.value)}
-          >
-            <span className='palm-option-label'>{option.label}</span>
-            <span className='palm-option-note'>{option.note}</span>
-          </button>
-        ))}
-      </div>
-    </section>
     <button type='button' className='palm-primary' onClick={onStart}>
       スタート
     </button>
@@ -159,7 +137,6 @@ const PalmResult = ({ answers, onRetry, onTop }: ResultProps) => {
 };
 
 const Palm = () => {
-  const [difficulty, setDifficulty] = useState<Difficulty>(1);
   const [screen, setScreen] = useState<Screen>({ name: 'start' });
   // 問題を作り直すたびに PalmPlay をマウントし直すためのキー
   const [round, setRound] = useState(0);
@@ -174,13 +151,13 @@ const Palm = () => {
 
   const start = () => {
     setRound(round + 1);
-    setScreen({ name: 'play', questions: makeQuestions(SHOPS, difficulty, Math.random) });
+    setScreen({ name: 'play', questions: makeQuestions(SHOPS, Math.random) });
   };
 
   return (
     <main className='palm-page'>
       <h1 className='palm-title'>パルム散歩クイズ</h1>
-      {screen.name === 'start' && <PalmStart difficulty={difficulty} onChange={setDifficulty} onStart={start} />}
+      {screen.name === 'start' && <PalmStart onStart={start} />}
       {screen.name === 'play' && (
         <PalmPlay
           key={round}

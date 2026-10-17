@@ -11,8 +11,6 @@ export type Shop = {
 
 export type Direction = 'fromStation' | 'fromNakahara';
 
-export type Difficulty = 1 | 2;
-
 export type Choice = { label: string; correct: boolean };
 
 export type QuestionKind = 'nearer' | 'hand' | 'sameBlock';
@@ -58,22 +56,22 @@ const isNearerStation = (a: Shop, b: Shop): boolean => {
   return a.order < b.order;
 };
 
-// どっちが駅側？ 難易度1は別ブロック、難易度2は同じ区画から 2 店を選ぶ。
+// どっちを先に通る？ 半々で、別ブロックの 2 店か同じ区画の 2 店を選ぶ。
 // 注意: 同じブロックの左右にまたがるペアは並び順で比べられないので出さない。
-const makeNearer = (shops: Shop[], difficulty: Difficulty, rng: Rng): Question => {
+const makeNearer = (shops: Shop[], direction: Direction, rng: Rng): Question => {
   const a = pick(shops, rng);
-  const candidates = shops.filter((shop) =>
-    difficulty === 1 ? shop.block !== a.block : sameSection(shop, a) && shop.id !== a.id
+  const otherBlock = rng() < 0.5;
+  const b = pick(
+    shops.filter((shop) => (otherBlock ? shop.block !== a.block : sameSection(shop, a) && shop.id !== a.id)),
+    rng
   );
-  const b = pick(candidates, rng);
-  const toStation = rng() < 0.5;
+  // 駅から歩くなら駅に近い方、中原街道から歩くなら中原街道に近い方を先に通る。
   const aNearer = isNearerStation(a, b);
-  const aCorrect = toStation ? aNearer : !aNearer;
+  const aCorrect = direction === 'fromStation' ? aNearer : !aNearer;
   const [first, second] = shuffle([a, b], rng);
-  const target = toStation ? '駅' : '中原街道';
   return {
     kind: 'nearer',
-    text: `「${first.name}」と「${second.name}」、${target}に近いのは？`,
+    text: `${directionText(direction)}「${first.name}」と「${second.name}」、先に通るのは？`,
     choices: [first, second].map((shop) => ({ label: shop.name, correct: (shop === a) === aCorrect })),
     shops: [first, second]
   };
@@ -115,22 +113,23 @@ const makeSameBlock = (shops: Shop[], rng: Rng): Question => {
 };
 
 // 出題形式をランダムに混ぜる。
-export const makeQuestion = (shops: Shop[], difficulty: Difficulty, rng: Rng): Question => {
+export const makeQuestion = (shops: Shop[], rng: Rng): Question => {
+  // 歩く向きは毎問半々で選ぶ。
+  const direction: Direction = rng() < 0.5 ? 'fromStation' : 'fromNakahara';
   const makers: (() => Question)[] = [
-    () => makeNearer(shops, difficulty, rng),
-    () => makeHand(shops, 'fromStation', rng),
+    () => makeNearer(shops, direction, rng),
+    () => makeHand(shops, direction, rng),
     () => makeSameBlock(shops, rng)
   ];
-  if (difficulty === 2) makers.push(() => makeHand(shops, 'fromNakahara', rng));
   return pick(makers, rng)();
 };
 
 // 同じ店ばかり出ないよう、直前までの問題と店がかぶったら作り直す。
-export const makeQuestions = (shops: Shop[], difficulty: Difficulty, rng: Rng): Question[] => {
+export const makeQuestions = (shops: Shop[], rng: Rng): Question[] => {
   const questions: Question[] = [];
   const used = new Set<number>();
   while (questions.length < QUESTION_COUNT) {
-    const question = makeQuestion(shops, difficulty, rng);
+    const question = makeQuestion(shops, rng);
     if (question.shops.some((shop) => used.has(shop.id))) continue;
     for (const shop of question.shops) used.add(shop.id);
     questions.push(question);
