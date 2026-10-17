@@ -1,0 +1,279 @@
+.palm-page {
+	--bg: #f6f1e7;
+	--surface: #ffffff;
+	--text: #2b2a27;
+	--muted: #7a756b;
+	--line: #ddd5c6;
+	--accent: #e8590c;
+	--correct: #2f9e44;
+	--wrong: #e03131;
+
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	padding: calc(16px + env(safe-area-inset-top)) 16px
+		calc(24px + env(safe-area-inset-bottom));
+	background: var(--bg);
+	color: var(--text);
+	font-family:
+		"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo,
+		sans-serif;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.palm-title {
+	margin: 8px 0 0;
+	font-size: clamp(26px, 8vw, 36px);
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	color: var(--accent);
+}
+
+.palm-start,
+.palm-play,
+.palm-result {
+	width: min(100%, 480px);
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.palm-lead {
+	margin: 0;
+	line-height: 1.7;
+}
+
+.palm-option-group {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.palm-option-title {
+	margin: 0;
+	font-size: 15px;
+	color: var(--muted);
+}
+
+.palm-options {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.palm-option {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 12px 14px;
+	border: 2px solid var(--line);
+	border-radius: 12px;
+	background: var(--surface);
+	color: var(--text);
+	text-align: left;
+	font: inherit;
+	cursor: pointer;
+}
+
+.palm-option[aria-pressed="true"] {
+	border-color: var(--accent);
+	background: #fff4e6;
+}
+
+.palm-option-label {
+	font-weight: 700;
+}
+
+.palm-option-note {
+	font-size: 13px;
+	color: var(--muted);
+}
+
+.palm-primary {
+	padding: 14px;
+	border: none;
+	border-radius: 12px;
+	background: var(--accent);
+	color: #fff;
+	font: inherit;
+	font-size: 18px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.palm-text-button {
+	align-self: center;
+	padding: 8px;
+	border: none;
+	background: none;
+	color: var(--muted);
+	font: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.palm-header {
+	/* 「やめる」を左に置いたまま、問題番号を中央にそろえる。 */
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	align-items: center;
+	font-variant-numeric: tabular-nums;
+}
+
+.palm-header .palm-text-button {
+	justify-self: start;
+	align-self: auto;
+	padding: 4px 0;
+}
+
+.palm-question {
+	margin: 0;
+	min-height: 5.4em;
+	padding: 16px;
+	border-radius: 12px;
+	background: var(--surface);
+	font-size: 19px;
+	font-weight: 700;
+	line-height: 1.6;
+}
+
+.palm-choices {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+}
+
+.palm-choice {
+	min-height: 72px;
+	padding: 10px;
+	border: 2px solid var(--line);
+	border-radius: 12px;
+	background: var(--surface);
+	color: var(--text);
+	font: inherit;
+	font-size: 17px;
+	font-weight: 700;
+	word-break: break-all;
+	cursor: pointer;
+}
+
+.palm-choice:disabled {
+	cursor: default;
+	opacity: 0.55;
+}
+
+.palm-choice.is-correct {
+	border-color: var(--correct);
+	background: #ebfbee;
+	opacity: 1;
+}
+
+.palm-choice.is-wrong {
+	border-color: var(--wrong);
+	background: #fff5f5;
+	opacity: 1;
+}
+
+.palm-feedback {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.palm-judge {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 800;
+}
+
+.palm-judge.is-correct {
+	color: var(--correct);
+}
+
+.palm-judge.is-wrong {
+	color: var(--wrong);
+}
+
+.palm-places {
+	margin: 0;
+	padding-left: 1.2em;
+	line-height: 1.7;
+}
+
+.palm-note {
+	margin: 0;
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.palm-result {
+	align-items: stretch;
+	text-align: center;
+}
+
+.palm-result-main {
+	margin: 16px 0 0;
+	font-size: 20px;
+}
+
+.palm-result-main strong {
+	font-size: 40px;
+	color: var(--accent);
+}
+
+.palm-review {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	text-align: left;
+}
+
+.palm-review > ul {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.palm-review > ul > li {
+	padding: 12px;
+	border-radius: 12px;
+	background: var(--surface);
+}
+
+.palm-review > ul > li.is-correct {
+	border-left: 4px solid var(--correct);
+}
+
+.palm-review > ul > li.is-wrong {
+	border-left: 4px solid var(--wrong);
+}
+
+.palm-review-judge {
+	font-weight: 800;
+}
+
+.palm-review-judge.is-correct {
+	color: var(--correct);
+}
+
+.palm-review-judge.is-wrong {
+	color: var(--wrong);
+}
+
+.palm-review-chosen {
+	color: var(--wrong);
+}
+
+.palm-review p {
+	margin: 0 0 4px;
+}
+
+.palm-review-answer {
+	font-weight: 700;
+	color: var(--correct);
+}
