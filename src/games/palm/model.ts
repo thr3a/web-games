@@ -13,7 +13,7 @@ export type Direction = 'fromStation' | 'fromNakahara';
 
 export type Choice = { label: string; correct: boolean };
 
-export type QuestionKind = 'nearer' | 'hand' | 'sameArea';
+export type QuestionKind = 'nearer' | 'hand' | 'sameSection';
 
 export type Question = {
   kind: QuestionKind;
@@ -90,21 +90,24 @@ const makeHand = (shops: Shop[], direction: Direction, rng: Rng): Question => {
   };
 };
 
-// 同じエリア？ 正解が偏らないよう、半々で同じエリアの店を選ぶ。
-const makeSameArea = (shops: Shop[], rng: Rng): Question => {
+// 同じ区画？ 正解が偏らないよう、半々で同じ区画の店を選ぶ。
+// 違う区画のときは別エリアの同じ側から選ぶ（同じエリアの反対側は使わない）。
+const makeSameSection = (shops: Shop[], rng: Rng): Question => {
   const a = pick(shops, rng);
   const wantSame = rng() < 0.5;
   const b = pick(
-    shops.filter((shop) => shop.id !== a.id && (shop.area === a.area) === wantSame),
+    shops.filter((shop) =>
+      wantSame ? sameSection(shop, a) && shop.id !== a.id : shop.area !== a.area && shop.side === a.side
+    ),
     rng
   );
-  const same = a.area === b.area;
+  const same = sameSection(a, b);
   return {
-    kind: 'sameArea',
-    text: `「${a.name}」と「${b.name}」は同じエリア？`,
+    kind: 'sameSection',
+    text: `「${a.name}」と「${b.name}」は同じ区画？`,
     choices: [
-      { label: '同じエリア', correct: same },
-      { label: '違うエリア', correct: !same }
+      { label: '同じ区画', correct: same },
+      { label: '違う区画', correct: !same }
     ],
     shops: [a, b]
   };
@@ -117,7 +120,7 @@ export const makeQuestion = (shops: Shop[], rng: Rng): Question => {
   const makers: (() => Question)[] = [
     () => makeNearer(shops, direction, rng),
     () => makeHand(shops, direction, rng),
-    () => makeSameArea(shops, rng)
+    () => makeSameSection(shops, rng)
   ];
   return pick(makers, rng)();
 };
