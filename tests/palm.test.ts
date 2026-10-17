@@ -1,5 +1,14 @@
 import { expect, test } from 'vitest';
-import { isCorrectOrder, makeQuestion, makeQuestions, type Question, type Shop } from '../src/games/palm/model';
+import {
+  DEFAULT_KINDS,
+  isCorrectOrder,
+  makeQuestion,
+  makeQuestions,
+  parseKinds,
+  QUESTION_KINDS,
+  type Question,
+  type Shop
+} from '../src/games/palm/model';
 import { SHOPS } from '../src/games/palm/shops';
 
 // 再現できるよう、シード付きの簡単な乱数を使う。
@@ -27,7 +36,7 @@ const collect = (): Map<string, Question[]> => {
   const rng = seeded(42);
   const map = new Map<string, Question[]>();
   for (let i = 0; i < 6000; i++) {
-    const question = makeQuestion(SHOPS, rng);
+    const question = makeQuestion(SHOPS, rng, QUESTION_KINDS);
     map.set(question.kind, [...(map.get(question.kind) ?? []), question]);
   }
   return map;
@@ -57,6 +66,15 @@ test('全形式が出題され、正解はちょうど 1 つ（並べ替え以�
       expect(new Set(question.choices.map((c) => c.label)).size).toBe(question.choices.length);
     }
   }
+});
+
+test('通常プレイでは notInSection・whichShop を出さない（?kind= で指定したときだけ出る）', () => {
+  const rng = seeded(7);
+  for (let i = 0; i < 2000; i++) {
+    expect(['notInSection', 'whichShop']).not.toContain(makeQuestion(SHOPS, rng).kind);
+  }
+  expect(parseKinds(null)).toEqual(DEFAULT_KINDS);
+  expect(parseKinds('whichShop')).toEqual(['whichShop']);
 });
 
 test('区画当ては 8 区画から選び、正解が店の区画', () => {

@@ -45,6 +45,11 @@ export const QUESTION_KINDS: QuestionKind[] = [
   'order'
 ];
 
+// 通常プレイで出す形式。notInSection・whichShop は内容を見直すまで出さない（?kind= で指定したときだけ出る）。
+export const DEFAULT_KINDS: QuestionKind[] = QUESTION_KINDS.filter(
+  (kind) => kind !== 'notInSection' && kind !== 'whichShop'
+);
+
 export type Question = {
   kind: QuestionKind;
   text: string;
@@ -345,7 +350,7 @@ export const isCorrectOrder = (question: Question, order: number[]): boolean =>
   order.length === question.choices.length && order.every((choiceIndex, i) => question.choices[choiceIndex].rank === i);
 
 // 出題形式をランダムに混ぜる。kinds を渡すとその形式だけから選ぶ（デバッグ用）。
-export const makeQuestion = (shops: Shop[], rng: Rng, kinds: QuestionKind[] = QUESTION_KINDS): Question => {
+export const makeQuestion = (shops: Shop[], rng: Rng, kinds: QuestionKind[] = DEFAULT_KINDS): Question => {
   // 歩く向きは毎問半々で選ぶ。
   const direction: Direction = rng() < 0.5 ? 'fromStation' : 'fromNakahara';
   const makers: Record<QuestionKind, () => Question> = {
@@ -364,7 +369,7 @@ export const makeQuestion = (shops: Shop[], rng: Rng, kinds: QuestionKind[] = QU
 };
 
 // 同じ店ばかり出ないよう、直前までの問題と店がかぶったら作り直す。
-export const makeQuestions = (shops: Shop[], rng: Rng, kinds: QuestionKind[] = QUESTION_KINDS): Question[] => {
+export const makeQuestions = (shops: Shop[], rng: Rng, kinds: QuestionKind[] = DEFAULT_KINDS): Question[] => {
   const questions: Question[] = [];
   const used = new Set<number>();
   while (questions.length < QUESTION_COUNT) {
@@ -376,9 +381,9 @@ export const makeQuestions = (shops: Shop[], rng: Rng, kinds: QuestionKind[] = Q
   return questions;
 };
 
-// URL の ?kind=order,hand のような指定を出題形式の一覧にする。正しい形式が 1 つもなければ全形式。
+// URL の ?kind=order,hand のような指定を出題形式の一覧にする。正しい形式が 1 つもなければ通常プレイの形式。
 export const parseKinds = (param: string | null): QuestionKind[] => {
-  if (!param) return QUESTION_KINDS;
+  if (!param) return DEFAULT_KINDS;
   const kinds = QUESTION_KINDS.filter((kind) => param.split(',').includes(kind));
-  return kinds.length > 0 ? kinds : QUESTION_KINDS;
+  return kinds.length > 0 ? kinds : DEFAULT_KINDS;
 };
