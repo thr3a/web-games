@@ -11,15 +11,32 @@ export type Shop = {
 
 export type Direction = 'fromStation' | 'fromNakahara';
 
-export type Choice = { label: string; correct: boolean };
+export type Section = { area: number; side: Side };
 
-export type QuestionKind = 'nearer' | 'hand' | 'sameSection';
+export type Choice = {
+  label: string;
+  correct: boolean;
+  section?: Section; // 区画当てで、この選択肢がどの区画か
+};
+
+export type QuestionKind =
+  | 'nearer'
+  | 'hand'
+  | 'sameSection'
+  | 'section'
+  | 'between'
+  | 'nearest'
+  | 'oddOne'
+  | 'notInSection'
+  | 'whichShop';
 
 export type Question = {
   kind: QuestionKind;
   text: string;
   choices: Choice[];
   shops: Shop[]; // 答え合わせで場所を見せる店
+  keyShops: Shop[]; // 問題文に出る店と正解の店。同じプレイで 2 回出さない対象
+  hintShops?: Shop[]; // 出題時にもミニマップを出す場合に点を打つ店（空なら地図だけ）
 };
 
 export type Rng = () => number;
@@ -37,7 +54,19 @@ const shuffle = <T>(items: T[], rng: Rng): T[] => {
   return result;
 };
 
+// rng で items から重複なしに count 個選ぶ。
+const pickMany = <T>(items: T[], count: number, rng: Rng): T[] => shuffle(items, rng).slice(0, count);
+
 const sameSection = (a: Shop, b: Shop): boolean => a.area === b.area && a.side === b.side;
+
+export const AREAS = [1, 2, 3, 4];
+export const SIDES: Side[] = ['left', 'right'];
+
+export const sectionLabel = (section: Section): string =>
+  `PALM-${section.area} ${section.side === 'left' ? '左側' : '右側'}`;
+
+const shopChoices = (choiceShops: Shop[], correct: Shop): Choice[] =>
+  choiceShops.map((shop) => ({ label: shop.name, correct: shop.id === correct.id }));
 
 // 歩く向きに合わせた手の左右。中原街道から駅へ歩くと左右が入れ替わる。
 const handOf = (shop: Shop, direction: Direction): Side => {
@@ -71,7 +100,8 @@ const makeNearer = (shops: Shop[], direction: Direction, rng: Rng): Question => 
     kind: 'nearer',
     text: `${directionText(direction)}「${first.name}」と「${second.name}」、先に通るのは？`,
     choices: [first, second].map((shop) => ({ label: shop.name, correct: (shop === a) === aCorrect })),
-    shops: [first, second]
+    shops: [first, second],
+    keyShops: [first, second]
   };
 };
 
@@ -86,7 +116,8 @@ const makeHand = (shops: Shop[], direction: Direction, rng: Rng): Question => {
       { label: '左手', correct: hand === 'left' },
       { label: '右手', correct: hand === 'right' }
     ],
-    shops: [shop]
+    shops: [shop],
+    keyShops: [shop]
   };
 };
 
@@ -109,7 +140,151 @@ const makeSameSection = (shops: Shop[], rng: Rng): Question => {
       { label: '同じ区画', correct: same },
       { label: '違う区画', correct: !same }
     ],
-    shops: [a, b]
+    shops: [a, b],
+    keyShops: [a, b]
+  };
+};
+
+// 区画当て。ミニマップの 8 区画をタップして答える。
+const makeSection = (shops: Shop[], rng: Rng): Question => {
+  const shop = pick(shops, rng);
+  const sections = AREAS.flatMap((area) => SIDES.map((side) => ({ area, side })));
+  return {
+    kind: 'section',
+    text: `「${shop.name}」はどこ？`,
+    choices: sections.map((section) => ({
+      label: sectionLabel(section),
+      correct: section.area === shop.area && section.side === shop.side,
+      section
+    })),
+    shops: [shop],
+    keyShops: [shop]
+  };
+};
+
+// 同じ側の店を駅側から並べる。同じ側ならエリアをまたいでも、エリア番号 → 並び順で比べられる。
+const sideLine = (shops: Shop[], side: Side): Shop[] =>
+  shops.filter((shop) => shop.side === side).sort((a, b) => a.area - b.area || a.order - b.order);
+
+// 間にある店はどれ？ A・B・選択肢はすべて同じ側にそろえる。
+const makeBetween = (shops: Shop[], rng: Rng): Question => {
+  const line = sideLine(shops, pick(SIDES, rng));
+  // A と B の間に 1 店以上あり、間に入らない店が不正解用に 3 店以上残るペアだけを候補にする。
+  const pairs = line.flatMap((_, i) =>
+    line.flatMap((__, j) => (j - i >= 2 && line.length - (j - i + 1) >= 3 ? [[i, j]] : []))
+  );
+  const [i, j] = pick(pairs, rng);
+  const correct = pick(line.slice(i + 1, j), rng);
+  const wrongs = pickMany([...line.slice(0, i), ...line.slice(j + 1)], 3, rng);
+  const [first, second] = shuffle([line[i], line[j]], rng);
+  const choiceShops = shuffle([correct, ...wrongs], rng);
+  return {
+    kind: 'between',
+    text: `「${first.name}」と「${second.name}」の間にある店は？`,
+    choices: shopChoices(choiceShops, correct),
+    shops: [first, second, ...choiceShops],
+    keyShops: [first, second, correct]
+  };
+};
+
+// いちばん駅（中原街道）に近いのは？ 正解の店を基準に、同じ区画 1 店・別エリア 2 店を足す。
+// 注意: 同じエリアの反対側の店は比べられないので入れない。
+const makeNearest = (shops: Shop[], rng: Rng): Question => {
+  const toStation = rng() < 0.5;
+  // 駅版なら正解より駅から遠い店、中原街道版なら正解より駅に近い店だけを他の選択肢に使う。
+  const farther = (shop: Shop, base: Shop): boolean =>
+    toStation ? isNearerStation(base, shop) : isNearerStation(shop, base);
+  const sameCandidates = (base: Shop): Shop[] => shops.filter((shop) => sameSection(shop, base) && farther(shop, base));
+  const otherCandidates = (base: Shop): Shop[] =>
+    shops.filter((shop) => shop.area !== base.area && farther(shop, base));
+  const correct = pick(
+    shops.filter((shop) => sameCandidates(shop).length >= 1 && otherCandidates(shop).length >= 2),
+    rng
+  );
+  const choiceShops = shuffle(
+    [correct, pick(sameCandidates(correct), rng), ...pickMany(otherCandidates(correct), 2, rng)],
+    rng
+  );
+  const names = choiceShops.map((shop) => `「${shop.name}」`).join('');
+  return {
+    kind: 'nearest',
+    text: `${names}のうち、いちばん${toStation ? '駅' : '中原街道'}に近いのは？`,
+    choices: shopChoices(choiceShops, correct),
+    shops: choiceShops,
+    keyShops: choiceShops
+  };
+};
+
+// 仲間はずれ。1 つのエリアから 3 店、別のエリアから 1 店（これが正解）。
+const makeOddOne = (shops: Shop[], rng: Rng): Question => {
+  const area = pick(AREAS, rng);
+  const correct = pick(
+    shops.filter((shop) => shop.area !== area),
+    rng
+  );
+  const choiceShops = shuffle(
+    [
+      correct,
+      ...pickMany(
+        shops.filter((shop) => shop.area === area),
+        3,
+        rng
+      )
+    ],
+    rng
+  );
+  return {
+    kind: 'oddOne',
+    text: '1 つだけエリアが違う店は？',
+    choices: shopChoices(choiceShops, correct),
+    shops: choiceShops,
+    keyShops: [correct]
+  };
+};
+
+// この区画にない店は？ 1 つの区画から 3 店、別の区画から 1 店（これが正解）。
+const makeNotInSection = (shops: Shop[], rng: Rng): Question => {
+  const base = pick(shops, rng);
+  const correct = pick(
+    shops.filter((shop) => !sameSection(shop, base)),
+    rng
+  );
+  const choiceShops = shuffle(
+    [
+      correct,
+      ...pickMany(
+        shops.filter((shop) => sameSection(shop, base)),
+        3,
+        rng
+      )
+    ],
+    rng
+  );
+  return {
+    kind: 'notInSection',
+    text: `PALM-${base.area}の${base.side === 'left' ? '左側' : '右側'}にない店は？`,
+    choices: shopChoices(choiceShops, correct),
+    shops: choiceShops,
+    keyShops: [correct],
+    hintShops: []
+  };
+};
+
+// ここは何の店？ ミニマップの点は厳密な位置ではないので、近すぎる店は不正解に使わない。
+const makeWhichShop = (shops: Shop[], rng: Rng): Question => {
+  const correct = pick(shops, rng);
+  const sameRest = shops.filter((shop) => sameSection(shop, correct) && Math.abs(shop.order - correct.order) > 3);
+  const otherRest = shops.filter((shop) => !sameSection(shop, correct));
+  // 同じ区画の店を優先し、足りない分を他の区画から補う。
+  const wrongs = [...pickMany(sameRest, 3, rng), ...pickMany(otherRest, 3, rng)].slice(0, 3);
+  const choiceShops = shuffle([correct, ...wrongs], rng);
+  return {
+    kind: 'whichShop',
+    text: 'ミニマップの ● の位置にある店は？',
+    choices: shopChoices(choiceShops, correct),
+    shops: choiceShops,
+    keyShops: [correct],
+    hintShops: [correct]
   };
 };
 
@@ -120,7 +295,13 @@ export const makeQuestion = (shops: Shop[], rng: Rng): Question => {
   const makers: (() => Question)[] = [
     () => makeNearer(shops, direction, rng),
     () => makeHand(shops, direction, rng),
-    () => makeSameSection(shops, rng)
+    () => makeSameSection(shops, rng),
+    () => makeSection(shops, rng),
+    () => makeBetween(shops, rng),
+    () => makeNearest(shops, rng),
+    () => makeOddOne(shops, rng),
+    () => makeNotInSection(shops, rng),
+    () => makeWhichShop(shops, rng)
   ];
   return pick(makers, rng)();
 };
@@ -131,8 +312,8 @@ export const makeQuestions = (shops: Shop[], rng: Rng): Question[] => {
   const used = new Set<number>();
   while (questions.length < QUESTION_COUNT) {
     const question = makeQuestion(shops, rng);
-    if (question.shops.some((shop) => used.has(shop.id))) continue;
-    for (const shop of question.shops) used.add(shop.id);
+    if (question.keyShops.some((shop) => used.has(shop.id))) continue;
+    for (const shop of question.keyShops) used.add(shop.id);
     questions.push(question);
   }
   return questions;

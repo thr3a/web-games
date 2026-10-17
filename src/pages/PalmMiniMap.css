@@ -34,3 +34,26 @@
 	stroke-width: 4px;
 	stroke-linejoin: round;
 }
+
+.palm-map-section-button {
+	cursor: pointer;
+	outline: none;
+}
+
+.palm-map-section-button:hover .palm-map-section,
+.palm-map-section-button:focus-visible .palm-map-section {
+	stroke: #2b2a27;
+	stroke-width: 3px;
+}
+
+.palm-map .palm-map-section.is-correct {
+	fill: #b2f2bb;
+	stroke: #2f9e44;
+	stroke-width: 4px;
+}
+
+.palm-map .palm-map-section.is-wrong {
+	fill: #ffc9c9;
+	stroke: #e03131;
+	stroke-width: 4px;
+}

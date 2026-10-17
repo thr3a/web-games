@@ -225,3 +225,15 @@
 	font-weight: 700;
 	color: var(--correct);
 }
+
+.palm-section-picker {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.palm-map-note {
+	margin: 0;
+	font-size: 13px;
+	color: var(--muted);
+}

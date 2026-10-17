@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { makeQuestions, QUESTION_COUNT, type Question } from '../games/palm/model';
+import { makeQuestions, QUESTION_COUNT, type Question, type Section } from '../games/palm/model';
 import { SHOPS } from '../games/palm/shops';
-import { HorizontalBandMap } from './PalmMiniMapPatterns';
+import { HorizontalBandMap, type SectionState } from './PalmMiniMapPatterns';
 import './Palm.css';
 
 type Answer = { question: Question; chosen: number; correct: boolean };
@@ -20,6 +20,19 @@ const PalmStart = ({ onStart }: StartProps) => (
 );
 
 type PlayProps = { questions: Question[]; onFinish: (answers: Answer[]) => void; onQuit: () => void };
+
+const sameSectionOf = (a: Section, b: Section): boolean => a.area === b.area && a.side === b.side;
+
+// 区画当ての答え合わせ用に、正解の区画を緑、選んだ不正解の区画を赤にする。
+type SectionMark = { section: Section; state: SectionState };
+
+const sectionStatesOf = (answer: Answer): SectionMark[] =>
+  answer.question.choices.flatMap<SectionMark>((choice, i) => {
+    if (!choice.section) return [];
+    if (choice.correct) return [{ section: choice.section, state: 'correct' }];
+    if (answer.chosen === i) return [{ section: choice.section, state: 'wrong' }];
+    return [];
+  });
 
 const PalmPlay = ({ questions, onFinish, onQuit }: PlayProps) => {
   const [answers, setAnswers] = useState<Answer[]>([]);
@@ -44,6 +57,14 @@ const PalmPlay = ({ questions, onFinish, onQuit }: PlayProps) => {
     setRevealed(false);
   };
 
+  const chooseSection = (section: Section) => {
+    const choiceIndex = question.choices.findIndex(
+      (choice) => choice.section && sameSectionOf(choice.section, section)
+    );
+    if (choiceIndex < 0) return;
+    choose(choiceIndex);
+  };
+
   const number = revealed ? index : index + 1;
 
   return (
@@ -57,22 +78,35 @@ const PalmPlay = ({ questions, onFinish, onQuit }: PlayProps) => {
         </span>
       </header>
       <p className='palm-question'>{question.text}</p>
-      <div className='palm-choices'>
-        {question.choices.map((choice, i) => {
-          const state = !current ? '' : choice.correct ? ' is-correct' : current.chosen === i ? ' is-wrong' : '';
-          return (
-            <button
-              key={choice.label}
-              type='button'
-              className={`palm-choice${state}`}
-              disabled={revealed}
-              onClick={() => choose(i)}
-            >
-              {choice.label}
-            </button>
-          );
-        })}
-      </div>
+      {question.hintShops && <HorizontalBandMap shops={SHOPS} marked={question.hintShops} hideLabels />}
+      {question.kind === 'section' ? (
+        <div className='palm-section-picker'>
+          <p className='palm-map-note'>地図の区画をタップして答えてね（上の列が左側、下の列が右側）</p>
+          <HorizontalBandMap
+            shops={SHOPS}
+            marked={[]}
+            onSectionSelect={revealed ? undefined : chooseSection}
+            sectionStates={current ? sectionStatesOf(current) : undefined}
+          />
+        </div>
+      ) : (
+        <div className='palm-choices'>
+          {question.choices.map((choice, i) => {
+            const state = !current ? '' : choice.correct ? ' is-correct' : current.chosen === i ? ' is-wrong' : '';
+            return (
+              <button
+                key={choice.label}
+                type='button'
+                className={`palm-choice${state}`}
+                disabled={revealed}
+                onClick={() => choose(i)}
+              >
+                {choice.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {current && (
         <section className='palm-feedback' aria-live='polite'>
           <p className={`palm-judge ${current.correct ? 'is-correct' : 'is-wrong'}`}>

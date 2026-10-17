@@ -1,4 +1,4 @@
-import type { Shop } from '../games/palm/model';
+import { type Section, type Shop, sectionLabel } from '../games/palm/model';
 import './PalmMiniMap.css';
 import './PalmMiniMapPatterns.css';
 
@@ -25,9 +25,14 @@ const sectionSize = (shops: Shop[], area: number, side: Shop['side']): number =>
 const ratioInSection = (shops: Shop[], shop: Shop): number =>
   (shop.order - 0.5) / sectionSize(shops, shop.area, shop.side);
 
+export type SectionState = 'correct' | 'wrong';
+
 type Props = {
   shops: Shop[];
   marked: Shop[];
+  hideLabels?: boolean; // 点だけ出して店名は出さない（ここは何の店？の出題用）
+  onSectionSelect?: (section: Section) => void; // 渡すと区画をタップできるようにする（区画当て用）
+  sectionStates?: { section: Section; state: SectionState }[]; // 答え合わせで区画を色分けする
 };
 
 // ---------- 横向き（駅が左、中原街道が右。紙の地図と同じ向き） ----------
@@ -82,7 +87,14 @@ const placeLabels = (points: { shop: Shop; x: number }[], fontSize: number): Pla
   return placed;
 };
 
-const HorizontalMap = ({ shops, marked, layout }: Props & { layout: HorizontalLayout }) => {
+const HorizontalMap = ({
+  shops,
+  marked,
+  hideLabels,
+  onSectionSelect,
+  sectionStates,
+  layout
+}: Props & { layout: HorizontalLayout }) => {
   const laneHeight = layout.fontSize + 3;
   const labels = placeLabels(
     marked.map((shop) => {
@@ -93,7 +105,7 @@ const HorizontalMap = ({ shops, marked, layout }: Props & { layout: HorizontalLa
   );
   // 店名が何段に重なったかに合わせて、上下の余白を広げる。
   const lanesOf = (side: Shop['side']): number =>
-    Math.max(0, ...labels.filter((label) => label.shop.side === side).map((label) => label.lane));
+    hideLabels ? 0 : Math.max(0, ...labels.filter((label) => label.shop.side === side).map((label) => label.lane));
   const topPad = layout.pad + lanesOf('left') * laneHeight;
   const bottomPad = layout.pad + lanesOf('right') * laneHeight;
 
@@ -130,17 +142,44 @@ const HorizontalMap = ({ shops, marked, layout }: Props & { layout: HorizontalLa
         const { x, w } = areaSpan(area);
         return (
           <g key={area}>
-            {SIDES.map((side) => (
-              <rect
-                key={side}
-                x={x}
-                y={rowY(side)}
-                width={w}
-                height={layout.row}
-                fill={AREA_COLORS[area].fill}
-                stroke={AREA_COLORS[area].stroke}
-              />
-            ))}
+            {SIDES.map((side) => {
+              const state = sectionStates?.find(
+                (item) => item.section.area === area && item.section.side === side
+              )?.state;
+              const rect = (
+                <rect
+                  key={side}
+                  className={`palm-map-section${state ? ` is-${state}` : ''}`}
+                  x={x}
+                  y={rowY(side)}
+                  width={w}
+                  height={layout.row}
+                  fill={AREA_COLORS[area].fill}
+                  stroke={AREA_COLORS[area].stroke}
+                />
+              );
+              if (!onSectionSelect) return rect;
+              const select = () => onSectionSelect({ area, side });
+              return (
+                // SVG の中では <button> を置けないので、g に role='button' を付けてキーボードでも押せるようにする。
+                // biome-ignore lint/a11y/useSemanticElements: SVG 内では <button> を使えないため
+                <g
+                  key={side}
+                  className='palm-map-section-button'
+                  role='button'
+                  tabIndex={0}
+                  aria-label={sectionLabel({ area, side })}
+                  onClick={select}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    select();
+                  }}
+                >
+                  {rect}
+                </g>
+              );
+            })}
             {layout.street >= 12 && (
               <text className='palm-pattern-area-h' x={x + w / 2} y={streetY + layout.street / 2}>
                 PALM-{area}
@@ -155,28 +194,29 @@ const HorizontalMap = ({ shops, marked, layout }: Props & { layout: HorizontalLa
         const y = rowY(shop.side) + layout.row / 2;
         return (
           <g key={shop.id}>
-            <line className='palm-pattern-leader' x1={x} y1={y} x2={x} y2={labelYOf(shop, lane)} />
+            {!hideLabels && <line className='palm-pattern-leader' x1={x} y1={y} x2={x} y2={labelYOf(shop, lane)} />}
             <circle className='palm-map-marker' cx={x} cy={y} r={Math.min(6, layout.row / 2)} />
           </g>
         );
       })}
-      {labels.map(({ shop, textX, anchor, lane }) => (
-        <text
-          key={shop.id}
-          className='palm-map-marker-label'
-          x={textX}
-          y={labelYOf(shop, lane)}
-          textAnchor={anchor}
-          style={{ fontSize: layout.fontSize }}
-        >
-          {shop.name}
-        </text>
-      ))}
+      {!hideLabels &&
+        labels.map(({ shop, textX, anchor, lane }) => (
+          <text
+            key={shop.id}
+            className='palm-map-marker-label'
+            x={textX}
+            y={labelYOf(shop, lane)}
+            textAnchor={anchor}
+            style={{ fontSize: layout.fontSize }}
+          >
+            {shop.name}
+          </text>
+        ))}
     </svg>
   );
 };
 
 // C: 紙の地図と同じ横向き。上の列が左側、下の列が右側。エリアの幅は実際の長さの比。
-export const HorizontalBandMap = ({ shops, marked }: Props) => (
-  <HorizontalMap shops={shops} marked={marked} layout={{ row: 30, street: 18, pad: 20, fontSize: 12 }} />
+export const HorizontalBandMap = (props: Props) => (
+  <HorizontalMap {...props} layout={{ row: 30, street: 18, pad: 20, fontSize: 12 }} />
 );
