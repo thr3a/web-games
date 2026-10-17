@@ -17,6 +17,7 @@ export type Choice = {
   label: string;
   correct: boolean;
   section?: Section; // 区画当てで、この選択肢がどの区画か
+  rank?: number; // 並べ替えで、この選択肢が正しくは何番目か（0 始まり）
 };
 
 export type QuestionKind =
@@ -28,7 +29,8 @@ export type QuestionKind =
   | 'nearest'
   | 'oddOne'
   | 'notInSection'
-  | 'whichShop';
+  | 'whichShop'
+  | 'order';
 
 export type Question = {
   kind: QuestionKind;
@@ -288,6 +290,48 @@ const makeWhichShop = (shops: Shop[], rng: Rng): Question => {
   };
 };
 
+// 並べ替え。同じ区画の 2 店（側もそろえる）と、別エリアの 2 店（側は問わない）を見える順にタップする。
+// 注意: 同じエリアの左右にまたがる店は比べられないので、4 店は 3 つのエリアにまたがるようにする。
+const makeOrder = (shops: Shop[], direction: Direction, rng: Rng): Question => {
+  const a = pick(
+    shops.filter((shop) => shops.some((other) => sameSection(other, shop) && other.id !== shop.id)),
+    rng
+  );
+  const b = pick(
+    shops.filter((shop) => sameSection(shop, a) && shop.id !== a.id),
+    rng
+  );
+  const others = pickMany(
+    AREAS.filter((area) => area !== a.area),
+    2,
+    rng
+  ).map((area) =>
+    pick(
+      shops.filter((shop) => shop.area === area),
+      rng
+    )
+  );
+  const sorted = [a, b, ...others].sort((x, y) => (isNearerStation(x, y) ? -1 : 1));
+  // 中原街道から歩くなら見える順は逆になる。
+  const answerOrder = direction === 'fromStation' ? sorted : [...sorted].reverse();
+  const choiceShops = shuffle(answerOrder, rng);
+  return {
+    kind: 'order',
+    text: `${directionText(direction)}見える順にタップしてね`,
+    choices: choiceShops.map((shop) => ({
+      label: shop.name,
+      correct: false,
+      rank: answerOrder.findIndex((ordered) => ordered.id === shop.id)
+    })),
+    shops: choiceShops,
+    keyShops: choiceShops
+  };
+};
+
+// 並べ替えの答え（選択肢の番号をタップした順に並べたもの）が合っているか。
+export const isCorrectOrder = (question: Question, order: number[]): boolean =>
+  order.length === question.choices.length && order.every((choiceIndex, i) => question.choices[choiceIndex].rank === i);
+
 // 出題形式をランダムに混ぜる。
 export const makeQuestion = (shops: Shop[], rng: Rng): Question => {
   // 歩く向きは毎問半々で選ぶ。
@@ -301,7 +345,8 @@ export const makeQuestion = (shops: Shop[], rng: Rng): Question => {
     () => makeNearest(shops, rng),
     () => makeOddOne(shops, rng),
     () => makeNotInSection(shops, rng),
-    () => makeWhichShop(shops, rng)
+    () => makeWhichShop(shops, rng),
+    () => makeOrder(shops, direction, rng)
   ];
   return pick(makers, rng)();
 };

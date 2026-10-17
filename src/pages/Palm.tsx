@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { makeQuestions, QUESTION_COUNT, type Question, type Section } from '../games/palm/model';
+import { isCorrectOrder, makeQuestions, QUESTION_COUNT, type Question, type Section } from '../games/palm/model';
 import { SHOPS } from '../games/palm/shops';
 import { HorizontalBandMap, type SectionState } from './PalmMiniMapPatterns';
 import './Palm.css';
 
-type Answer = { question: Question; chosen: number; correct: boolean };
+type Answer = { question: Question; chosen: number; correct: boolean; order?: number[] }; // order は並べ替えでタップした選択肢の番号順
 
 type Screen = { name: 'start' } | { name: 'play'; questions: Question[] } | { name: 'result'; answers: Answer[] };
 
@@ -47,11 +47,29 @@ const sectionStatesOf = (answer: Answer): SectionMark[] =>
     return [];
   });
 
+// ふりかえり用の「あなたの答え」と「答え」の文言。並べ替えは「A → B → C → D」の形にする。
+const chosenLabelOf = (answer: Answer): string => {
+  if (answer.order) return answer.order.map((i) => answer.question.choices[i].label).join(' → ');
+  return answer.question.choices[answer.chosen]?.label ?? '';
+};
+
+const correctLabelOf = (question: Question): string => {
+  if (question.kind === 'order') {
+    return [...question.choices]
+      .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
+      .map((choice) => choice.label)
+      .join(' → ');
+  }
+  return question.choices.find((choice) => choice.correct)?.label ?? '';
+};
+
 const PalmPlay = ({ questions, onFinish, onQuit }: PlayProps) => {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const index = answers.length;
   // 回答してから「次へ」を押すまでは答え合わせを表示する。
   const [revealed, setRevealed] = useState(false);
+  // 並べ替えで、ここまでにタップした選択肢の番号
+  const [tapped, setTapped] = useState<number[]>([]);
   const current = revealed ? answers[index - 1] : null;
   const question = current ? current.question : questions[index];
 
@@ -68,6 +86,22 @@ const PalmPlay = ({ questions, onFinish, onQuit }: PlayProps) => {
       return;
     }
     setRevealed(false);
+    setTapped([]);
+  };
+
+  // 番号の付いた店をもう一度タップしたら、その店から後の番号を取り消す。
+  const tapOrder = (choiceIndex: number) => {
+    if (revealed) return;
+    const position = tapped.indexOf(choiceIndex);
+    if (position >= 0) {
+      setTapped(tapped.slice(0, position));
+      return;
+    }
+    const order = [...tapped, choiceIndex];
+    setTapped(order);
+    if (order.length < question.choices.length) return;
+    setAnswers([...answers, { question, chosen: -1, correct: isCorrectOrder(question, order), order }]);
+    setRevealed(true);
   };
 
   const chooseSection = (section: Section) => {
@@ -101,6 +135,28 @@ const PalmPlay = ({ questions, onFinish, onQuit }: PlayProps) => {
             onSectionSelect={revealed ? undefined : chooseSection}
             sectionStates={current ? sectionStatesOf(current) : undefined}
           />
+        </div>
+      ) : question.kind === 'order' ? (
+        <div className='palm-choices'>
+          {question.choices.map((choice, i) => {
+            const rank = choice.rank ?? 0;
+            // 回答後は正しい番号を出し、その位置にタップできていれば緑、違えば赤にする。
+            const state = !current ? '' : current.order?.[rank] === i ? ' is-correct' : ' is-wrong';
+            const position = tapped.indexOf(i);
+            const badge = current ? rank + 1 : position >= 0 ? position + 1 : null;
+            return (
+              <button
+                key={choice.label}
+                type='button'
+                className={`palm-choice palm-order-choice${state}`}
+                disabled={revealed}
+                onClick={() => tapOrder(i)}
+              >
+                {badge !== null && <span className='palm-order-badge'>{badge}</span>}
+                {choice.label}
+              </button>
+            );
+          })}
         </div>
       ) : (
         <div className='palm-choices'>
@@ -154,12 +210,8 @@ const PalmResult = ({ answers, onRetry, onTop }: ResultProps) => {
                 Q{i + 1} {answer.correct ? '正解' : '不正解'}
               </p>
               <p>{answer.question.text}</p>
-              {!answer.correct && (
-                <p className='palm-review-chosen'>あなたの答え: {answer.question.choices[answer.chosen]?.label}</p>
-              )}
-              <p className='palm-review-answer'>
-                答え: {answer.question.choices.find((choice) => choice.correct)?.label}
-              </p>
+              {!answer.correct && <p className='palm-review-chosen'>あなたの答え: {chosenLabelOf(answer)}</p>}
+              <p className='palm-review-answer'>答え: {correctLabelOf(answer.question)}</p>
               <HorizontalBandMap shops={SHOPS} marked={answer.question.shops} />
             </li>
           ))}

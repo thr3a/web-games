@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { makeQuestion, makeQuestions, type Question, type Shop } from '../src/games/palm/model';
+import { isCorrectOrder, makeQuestion, makeQuestions, type Question, type Shop } from '../src/games/palm/model';
 import { SHOPS } from '../src/games/palm/shops';
 
 // 再現できるよう、シード付きの簡単な乱数を使う。
@@ -35,11 +35,23 @@ const collect = (): Map<string, Question[]> => {
 
 const questions = collect();
 
-test('全形式が出題され、正解はちょうど 1 つ', () => {
+test('全形式が出題され、正解はちょうど 1 つ（並べ替え以外）', () => {
   expect([...questions.keys()].sort()).toEqual(
-    ['between', 'hand', 'nearer', 'nearest', 'notInSection', 'oddOne', 'sameSection', 'section', 'whichShop'].sort()
+    [
+      'between',
+      'hand',
+      'nearer',
+      'nearest',
+      'notInSection',
+      'oddOne',
+      'order',
+      'sameSection',
+      'section',
+      'whichShop'
+    ].sort()
   );
-  for (const list of questions.values()) {
+  for (const [kind, list] of questions) {
+    if (kind === 'order') continue;
     for (const question of list) {
       expect(question.choices.filter((c) => c.correct)).toHaveLength(1);
       expect(new Set(question.choices.map((c) => c.label)).size).toBe(question.choices.length);
@@ -114,6 +126,30 @@ test('ここは何の店？: 正解と同じ区画で並び順の差が 3 以内
       if (shop.id === correct.id) continue;
       expect(sameSection(shop, correct) && Math.abs(shop.order - correct.order) <= 3).toBe(false);
     }
+  }
+});
+
+test('並べ替え: 同じ区画の 2 店と別エリアの 2 店で、正しい順だけが正解', () => {
+  for (const question of questions.get('order') ?? []) {
+    const shops = choiceShops(question);
+    expect(shops).toHaveLength(4);
+    expect(new Set(shops.map((shop) => shop.area)).size).toBe(3);
+    const pair = shops.filter((shop) => shops.some((other) => other.id !== shop.id && other.area === shop.area));
+    expect(pair).toHaveLength(2);
+    expect(sameSection(pair[0], pair[1])).toBe(true);
+    // rank 順に並べた店が、歩く向きに見える順になっている。
+    const answer = question.choices
+      .map((_, i) => i)
+      .sort((a, b) => (question.choices[a].rank ?? 0) - (question.choices[b].rank ?? 0));
+    const ordered = answer.map((i) => shops[i]);
+    const fromStation = question.text.startsWith('駅から');
+    for (let i = 1; i < ordered.length; i++) {
+      const [prev, next] = [pos(ordered[i - 1]), pos(ordered[i])];
+      expect(fromStation ? prev < next : prev > next).toBe(true);
+    }
+    expect(isCorrectOrder(question, answer)).toBe(true);
+    expect(isCorrectOrder(question, [...answer].reverse())).toBe(false);
+    expect(isCorrectOrder(question, answer.slice(0, 3))).toBe(false);
   }
 });
 
