@@ -1,13 +1,10 @@
-// パルム散歩クイズの問題生成と採点。
-// side は「駅から中原街道へ歩いたときの左右」、order は区画内で駅側から何番目か。
-
 export type Side = 'left' | 'right';
 
 export type Shop = {
   id: number;
   block: number;
-  side: Side;
-  order: number;
+  side: Side; // 駅から中原街道へ歩いたときの左右
+  order: number; // 区画内で駅側から何番目か
   name: string;
   floor: number;
 };
@@ -24,8 +21,7 @@ export type Question = {
   kind: QuestionKind;
   text: string;
   choices: Choice[];
-  // 答え合わせで場所を見せる店
-  shops: Shop[];
+  shops: Shop[]; // 答え合わせで場所を見せる店
 };
 
 export type Rng = () => number;
@@ -62,8 +58,8 @@ const isNearerStation = (a: Shop, b: Shop): boolean => {
   return a.order < b.order;
 };
 
-// Q01 どっちが駅側？ 難易度1は別ブロック、難易度2は同じ区画から 2 店を選ぶ。
-// 同じブロックの左右にまたがるペアは並び順で比べられないので出さない。
+// どっちが駅側？ 難易度1は別ブロック、難易度2は同じ区画から 2 店を選ぶ。
+// 注意: 同じブロックの左右にまたがるペアは並び順で比べられないので出さない。
 const makeNearer = (shops: Shop[], difficulty: Difficulty, rng: Rng): Question => {
   const a = pick(shops, rng);
   const candidates = shops.filter((shop) =>
@@ -83,7 +79,7 @@ const makeNearer = (shops: Shop[], difficulty: Difficulty, rng: Rng): Question =
   };
 };
 
-// Q03 右手？左手？（駅→中原街道） / Q06 逆向きの右手？左手？（中原街道→駅）
+// この店は○○から見て右手？左手？
 const makeHand = (shops: Shop[], direction: Direction, rng: Rng): Question => {
   const shop = pick(shops, rng);
   const hand = handOf(shop, direction);
@@ -98,7 +94,7 @@ const makeHand = (shops: Shop[], direction: Direction, rng: Rng): Question => {
   };
 };
 
-// Q05 同じブロック？ 正解が偏らないよう、半々で同じブロックの店を選ぶ。
+// 同じブロック？ 正解が偏らないよう、半々で同じブロックの店を選ぶ。
 const makeSameBlock = (shops: Shop[], rng: Rng): Question => {
   const a = pick(shops, rng);
   const wantSame = rng() < 0.5;
@@ -118,7 +114,7 @@ const makeSameBlock = (shops: Shop[], rng: Rng): Question => {
   };
 };
 
-// 出題形式をランダムに混ぜる。難易度1は駅→中原街道の向きだけ、難易度2は逆向き（Q06）も混ぜる。
+// 出題形式をランダムに混ぜる。
 export const makeQuestion = (shops: Shop[], difficulty: Difficulty, rng: Rng): Question => {
   const makers: (() => Question)[] = [
     () => makeNearer(shops, difficulty, rng),

@@ -1,5 +1,3 @@
-// shopmap.csv を読み込んで出題用の店データにする。店が入れ替わったら CSV を差し替えるだけでよい。
-
 import type { Shop } from './model';
 import csv from './shopmap.csv?raw';
 
