@@ -15,27 +15,8 @@
 	fill: #868e96;
 }
 
-.palm-map-road-label {
-	text-anchor: middle;
-	fill: #fff;
-	font-size: 13px;
-	font-weight: 700;
-	letter-spacing: 0.3em;
-}
-
 .palm-map-street {
 	fill: #f1f3f5;
-}
-
-.palm-map-block-label {
-	text-anchor: middle;
-	fill: #212529;
-	font-size: 20px;
-	font-weight: 800;
-	paint-order: stroke;
-	stroke: #fff;
-	stroke-width: 4px;
-	stroke-linejoin: round;
 }
 
 .palm-map-marker {
@@ -52,27 +33,4 @@
 	stroke: #fff;
 	stroke-width: 4px;
 	stroke-linejoin: round;
-}
-
-.palm-map-signal-arm {
-	stroke: #868e96;
-	stroke-width: 2px;
-}
-
-.palm-map-signal {
-	fill: #ced4da;
-	stroke: #868e96;
-	stroke-width: 1px;
-}
-
-.palm-map-signal-lamp {
-	stroke: #495057;
-	stroke-width: 1px;
-}
-
-.palm-map-signal-visor {
-	fill: none;
-	stroke: #495057;
-	stroke-width: 1.3px;
-	stroke-linecap: round;
 }
