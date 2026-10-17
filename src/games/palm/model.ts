@@ -2,7 +2,7 @@ export type Side = 'left' | 'right';
 
 export type Shop = {
   id: number;
-  block: number;
+  area: number;
   side: Side; // 駅から中原街道へ歩いたときの左右
   order: number; // 区画内で駅側から何番目か
   name: string;
@@ -13,7 +13,7 @@ export type Direction = 'fromStation' | 'fromNakahara';
 
 export type Choice = { label: string; correct: boolean };
 
-export type QuestionKind = 'nearer' | 'hand' | 'sameBlock';
+export type QuestionKind = 'nearer' | 'hand' | 'sameArea';
 
 export type Question = {
   kind: QuestionKind;
@@ -37,7 +37,7 @@ const shuffle = <T>(items: T[], rng: Rng): T[] => {
   return result;
 };
 
-const sameSection = (a: Shop, b: Shop): boolean => a.block === b.block && a.side === b.side;
+const sameSection = (a: Shop, b: Shop): boolean => a.area === b.area && a.side === b.side;
 
 // 歩く向きに合わせた手の左右。中原街道から駅へ歩くと左右が入れ替わる。
 const handOf = (shop: Shop, direction: Direction): Side => {
@@ -48,19 +48,19 @@ const handOf = (shop: Shop, direction: Direction): Side => {
 const directionText = (direction: Direction): string =>
   direction === 'fromStation' ? '駅から中原街道へ向かっています。' : '中原街道から駅へ向かっています。';
 
-// 駅により近いのは a か。別ブロックならブロック番号、同じ区画なら並び順で決める。
+// 駅により近いのは a か。別エリアならエリア番号、同じ区画なら並び順で決める。
 const isNearerStation = (a: Shop, b: Shop): boolean => {
-  if (a.block !== b.block) return a.block < b.block;
+  if (a.area !== b.area) return a.area < b.area;
   return a.order < b.order;
 };
 
-// どっちを先に通る？ 半々で、別ブロックの 2 店か同じ区画の 2 店を選ぶ。
-// 注意: 同じブロックの左右にまたがるペアは並び順で比べられないので出さない。
+// どっちを先に通る？ 半々で、別エリアの 2 店か同じ区画の 2 店を選ぶ。
+// 注意: 同じエリアの左右にまたがるペアは並び順で比べられないので出さない。
 const makeNearer = (shops: Shop[], direction: Direction, rng: Rng): Question => {
   const a = pick(shops, rng);
-  const otherBlock = rng() < 0.5;
+  const otherArea = rng() < 0.5;
   const b = pick(
-    shops.filter((shop) => (otherBlock ? shop.block !== a.block : sameSection(shop, a) && shop.id !== a.id)),
+    shops.filter((shop) => (otherArea ? shop.area !== a.area : sameSection(shop, a) && shop.id !== a.id)),
     rng
   );
   // 駅から歩くなら駅に近い方、中原街道から歩くなら中原街道に近い方を先に通る。
@@ -90,21 +90,21 @@ const makeHand = (shops: Shop[], direction: Direction, rng: Rng): Question => {
   };
 };
 
-// 同じブロック？ 正解が偏らないよう、半々で同じブロックの店を選ぶ。
-const makeSameBlock = (shops: Shop[], rng: Rng): Question => {
+// 同じエリア？ 正解が偏らないよう、半々で同じエリアの店を選ぶ。
+const makeSameArea = (shops: Shop[], rng: Rng): Question => {
   const a = pick(shops, rng);
   const wantSame = rng() < 0.5;
   const b = pick(
-    shops.filter((shop) => shop.id !== a.id && (shop.block === a.block) === wantSame),
+    shops.filter((shop) => shop.id !== a.id && (shop.area === a.area) === wantSame),
     rng
   );
-  const same = a.block === b.block;
+  const same = a.area === b.area;
   return {
-    kind: 'sameBlock',
-    text: `「${a.name}」と「${b.name}」は同じブロック？`,
+    kind: 'sameArea',
+    text: `「${a.name}」と「${b.name}」は同じエリア？`,
     choices: [
-      { label: '同じブロック', correct: same },
-      { label: '違うブロック', correct: !same }
+      { label: '同じエリア', correct: same },
+      { label: '違うエリア', correct: !same }
     ],
     shops: [a, b]
   };
@@ -117,7 +117,7 @@ export const makeQuestion = (shops: Shop[], rng: Rng): Question => {
   const makers: (() => Question)[] = [
     () => makeNearer(shops, direction, rng),
     () => makeHand(shops, direction, rng),
-    () => makeSameBlock(shops, rng)
+    () => makeSameArea(shops, rng)
   ];
   return pick(makers, rng)();
 };

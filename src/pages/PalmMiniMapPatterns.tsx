@@ -4,26 +4,26 @@ import './PalmMiniMapPatterns.css';
 
 // ミニマップを小さくする案の試作。PalmDebug で現状の地図と並べて見比べる。
 
-const BLOCK_COLORS: Record<number, { fill: string; stroke: string }> = {
+const AREA_COLORS: Record<number, { fill: string; stroke: string }> = {
   1: { fill: '#74c0fc', stroke: '#1c7ed6' },
   2: { fill: '#8ce99a', stroke: '#37b24d' },
   3: { fill: '#ffe066', stroke: '#f59f00' },
   4: { fill: '#ffc078', stroke: '#f76707' }
 };
 
-const BLOCKS = [1, 2, 3, 4];
+const AREAS = [1, 2, 3, 4];
 const SIDES: Shop['side'][] = ['left', 'right'];
 
-// 各ブロックの長さ(m)。横向きの地図ではこの比率で幅を割り振る。
-const BLOCK_LENGTHS: Record<number, number> = { 1: 120, 2: 100, 3: 120, 4: 210 };
+// 各エリアの長さ(m)。横向きの地図ではこの比率で幅を割り振る。
+const AREA_LENGTHS: Record<number, number> = { 1: 120, 2: 100, 3: 120, 4: 210 };
 const TOTAL_LENGTH = 550;
 
-const sectionSize = (shops: Shop[], block: number, side: Shop['side']): number =>
-  Math.max(...shops.filter((shop) => shop.block === block && shop.side === side).map((shop) => shop.order));
+const sectionSize = (shops: Shop[], area: number, side: Shop['side']): number =>
+  Math.max(...shops.filter((shop) => shop.area === area && shop.side === side).map((shop) => shop.order));
 
 // 区画の中で駅側から何割の位置か（店の中央）。
 const ratioInSection = (shops: Shop[], shop: Shop): number =>
-  (shop.order - 0.5) / sectionSize(shops, shop.block, shop.side);
+  (shop.order - 0.5) / sectionSize(shops, shop.area, shop.side);
 
 type Props = {
   shops: Shop[];
@@ -45,13 +45,13 @@ type HorizontalLayout = {
   fontSize: number;
 };
 
-// ブロックの左端と幅。横道の幅を除いた残りを長さの比で割り振る。
-const blockSpan = (block: number): { x: number; w: number } => {
+// エリアの左端と幅。横道の幅を除いた残りを長さの比で割り振る。
+const areaSpan = (area: number): { x: number; w: number } => {
   const usable = H_END - H_START - H_CROSS * 3;
   let x = H_START;
-  for (const b of BLOCKS) {
-    const w = (BLOCK_LENGTHS[b] / TOTAL_LENGTH) * usable;
-    if (b === block) return { x, w };
+  for (const b of AREAS) {
+    const w = (AREA_LENGTHS[b] / TOTAL_LENGTH) * usable;
+    if (b === area) return { x, w };
     x += w + H_CROSS;
   }
   return { x, w: 0 };
@@ -86,8 +86,8 @@ const HorizontalMap = ({ shops, marked, layout }: Props & { layout: HorizontalLa
   const laneHeight = layout.fontSize + 3;
   const labels = placeLabels(
     marked.map((shop) => {
-      const { x: blockX, w } = blockSpan(shop.block);
-      return { shop, x: blockX + ratioInSection(shops, shop) * w };
+      const { x: areaX, w } = areaSpan(shop.area);
+      return { shop, x: areaX + ratioInSection(shops, shop) * w };
     }),
     layout.fontSize
   );
@@ -126,10 +126,10 @@ const HorizontalMap = ({ shops, marked, layout }: Props & { layout: HorizontalLa
       </text>
       <rect className='palm-map-street' x={H_ROAD} y={streetY} width={H_WIDTH - H_ROAD * 2} height={layout.street} />
 
-      {BLOCKS.map((block) => {
-        const { x, w } = blockSpan(block);
+      {AREAS.map((area) => {
+        const { x, w } = areaSpan(area);
         return (
-          <g key={block}>
+          <g key={area}>
             {SIDES.map((side) => (
               <rect
                 key={side}
@@ -137,13 +137,13 @@ const HorizontalMap = ({ shops, marked, layout }: Props & { layout: HorizontalLa
                 y={rowY(side)}
                 width={w}
                 height={layout.row}
-                fill={BLOCK_COLORS[block].fill}
-                stroke={BLOCK_COLORS[block].stroke}
+                fill={AREA_COLORS[area].fill}
+                stroke={AREA_COLORS[area].stroke}
               />
             ))}
             {layout.street >= 12 && (
-              <text className='palm-pattern-block-h' x={x + w / 2} y={streetY + layout.street / 2}>
-                PALM-{block}
+              <text className='palm-pattern-area-h' x={x + w / 2} y={streetY + layout.street / 2}>
+                PALM-{area}
               </text>
             )}
           </g>
@@ -176,7 +176,7 @@ const HorizontalMap = ({ shops, marked, layout }: Props & { layout: HorizontalLa
   );
 };
 
-// C: 紙の地図と同じ横向き。上の列が左側、下の列が右側。ブロックの幅は実際の長さの比。
+// C: 紙の地図と同じ横向き。上の列が左側、下の列が右側。エリアの幅は実際の長さの比。
 export const HorizontalBandMap = ({ shops, marked }: Props) => (
   <HorizontalMap shops={shops} marked={marked} layout={{ row: 30, street: 18, pad: 20, fontSize: 12 }} />
 );

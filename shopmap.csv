@@ -1,4 +1,4 @@
-id,block,side,order,name,display_name,include,floor,genre,fame,同じ建物
+id,area,side,order,name,display_name,include,floor,genre,fame,同じ建物
 1,G,right,,コージーコーナー,コージーコーナー,TRUE,1,,1,
 2,G,right,,ミルフォード,ミルフォード,TRUE,1,,1,
 3,G,right,,武蔵小山メンタルクリニック,武蔵小山メンタルクリニック,TRUE,1,,1,

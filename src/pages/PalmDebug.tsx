@@ -10,7 +10,7 @@ const SLOTS = [0, 1];
 const SWEEP_INTERVAL = 500;
 
 const sectionText = (shop: Shop): string =>
-  `PALM-${shop.block} ${shop.side === 'left' ? '左' : '右'}側 order=${shop.order}${shop.floor >= 2 ? `（${shop.floor}F）` : ''}`;
+  `PALM-${shop.area} ${shop.side === 'left' ? '左' : '右'}側 order=${shop.order}${shop.floor >= 2 ? `（${shop.floor}F）` : ''}`;
 
 type PickerProps = {
   label: string;
@@ -44,7 +44,7 @@ const ShopPicker = ({ label, selectedId, onChange }: PickerProps) => {
         <option value=''>店を選択（{filtered.length}件）</option>
         {filtered.map((shop) => (
           <option key={shop.id} value={shop.id}>
-            PALM-{shop.block} {shop.side === 'left' ? '左' : '右'} {shop.order}: {shop.name}
+            PALM-{shop.area} {shop.side === 'left' ? '左' : '右'} {shop.order}: {shop.name}
           </option>
         ))}
       </select>
@@ -96,7 +96,7 @@ const PalmDebug = () => {
     const neighbors = SHOPS.filter(
       (shop) =>
         shop.id !== first.id &&
-        shop.block === first.block &&
+        shop.area === first.area &&
         shop.side === first.side &&
         Math.abs(shop.order - first.order) <= 2
     );
