@@ -220,10 +220,9 @@ const makeNearest = (shops: Shop[], rng: Rng): Question => {
     [correct, pick(sameCandidates(correct), rng), ...pickMany(otherCandidates(correct), 2, rng)],
     rng
   );
-  const names = choiceShops.map((shop) => `「${shop.name}」`).join('');
   return {
     kind: 'nearest',
-    text: `${names}のうち、いちばん${toStation ? '駅' : '中原街道'}に近いのは？`,
+    text: `いちばん${toStation ? '駅' : '中原街道'}に近いのは？`,
     choices: shopChoices(choiceShops, correct),
     shops: choiceShops,
     keyShops: choiceShops
