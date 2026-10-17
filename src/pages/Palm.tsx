@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
-import { isCorrectOrder, makeQuestions, QUESTION_COUNT, type Question, type Section } from '../games/palm/model';
+import {
+  isCorrectOrder,
+  makeQuestions,
+  parseKinds,
+  QUESTION_COUNT,
+  type Question,
+  type Section
+} from '../games/palm/model';
 import { SHOPS } from '../games/palm/shops';
 import { HorizontalBandMap, type SectionState } from './PalmMiniMapPatterns';
 import './Palm.css';
@@ -240,9 +247,12 @@ const Palm = () => {
     };
   }, []);
 
+  // デバッグ用: /palm?kind=order のように指定するとその形式だけ出す。
+  const kinds = parseKinds(new URLSearchParams(window.location.search).get('kind'));
+
   const start = () => {
     setRound(round + 1);
-    setScreen({ name: 'play', questions: makeQuestions(SHOPS, Math.random) });
+    setScreen({ name: 'play', questions: makeQuestions(SHOPS, Math.random, kinds) });
   };
 
   return (
