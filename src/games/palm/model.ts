@@ -24,7 +24,7 @@ export type Question = {
 
 export type Rng = () => number;
 
-export const QUESTION_COUNT = 10;
+export const QUESTION_COUNT = 5;
 
 const pick = <T>(items: T[], rng: Rng): T => items[Math.floor(rng() * items.length)];
 
@@ -36,8 +36,6 @@ const shuffle = <T>(items: T[], rng: Rng): T[] => {
   }
   return result;
 };
-
-const sideLabel = (side: Side): string => (side === 'left' ? '左' : '右');
 
 const sameSection = (a: Shop, b: Shop): boolean => a.block === b.block && a.side === b.side;
 
@@ -135,19 +133,4 @@ export const makeQuestions = (shops: Shop[], rng: Rng): Question[] => {
     questions.push(question);
   }
   return questions;
-};
-
-// 区画内で駅側から何軒目か（出題対象の店だけで数える）。
-const rankInSection = (shops: Shop[], shop: Shop): number =>
-  shops.filter((other) => sameSection(other, shop) && other.order <= shop.order).length;
-
-// 答え合わせ用の説明。例: 「マクドナルド: PALM-2 右側」（左右は駅から見たもの）
-// 同じ区画どうしの問題では、並び順で判定するので駅側から何軒目かも添える。
-export const describeShops = (question: Question, shops: Shop[]): string[] => {
-  const withRank = question.shops.length === 2 && sameSection(question.shops[0], question.shops[1]);
-  return question.shops.map((shop) => {
-    const floor = shop.floor >= 2 ? `（${shop.floor}F）` : '';
-    const rank = withRank ? ` 駅側から${rankInSection(shops, shop)}軒目` : '';
-    return `${shop.name}: PALM-${shop.block} ${sideLabel(shop.side)}側${rank}${floor}`;
-  });
 };

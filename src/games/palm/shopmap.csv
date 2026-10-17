@@ -146,7 +146,7 @@ id,block,side,order,name,display_name,include,floor,genre,fame,同じ建物
 145,3,right,,健デンタルクリニック,健デンタルクリニック,FALSE,2,,1,
 146,3,right,,すしの美登利,すしの美登利,TRUE,1,,1,
 147,3,right,,au style,au style,TRUE,1,,1,
-148,3,right,,KOMEHYO買取センター,KOMEHYO買取センター,TRUE,1,,1,
+148,3,right,,KOMEHYO買取センター,KOMEHYO買取,TRUE,1,,1,
 149,3,right,,天ぷら定食まきの,天ぷら定食まきの,TRUE,1,,1,
 150,3,right,,まぐろ相馬水産,まぐろ相馬水産,TRUE,1,,1,
 151,3,right,,オリンピックスポーツ,オリンピックスポーツ,FALSE,1,,1,

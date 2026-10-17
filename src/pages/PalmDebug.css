@@ -42,3 +42,54 @@
 	font-size: 14px;
 	color: #495057;
 }
+
+.palm-debug-map {
+	padding-top: 12px;
+	border-top: 1px solid #dee2e6;
+}
+
+.palm-debug-pattern-title {
+	margin: 0 0 4px;
+	font-size: 16px;
+}
+
+.palm-debug-picker {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0;
+	padding: 8px 10px 10px;
+	border: 1px solid #dee2e6;
+	border-radius: 8px;
+}
+
+.palm-debug-picker legend {
+	padding: 0 4px;
+	font-size: 14px;
+	font-weight: 700;
+}
+
+.palm-debug-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.palm-debug-button {
+	padding: 8px 12px;
+	border: 1px solid #ced4da;
+	border-radius: 8px;
+	background: #f8f9fa;
+	color: inherit;
+	font: inherit;
+	font-size: 14px;
+}
+
+.palm-debug-picker {
+	min-width: 0;
+}
+
+.palm-debug-input {
+	width: 100%;
+	box-sizing: border-box;
+}

@@ -156,18 +156,6 @@
 	color: var(--wrong);
 }
 
-.palm-places {
-	margin: 0;
-	padding-left: 1.2em;
-	line-height: 1.7;
-}
-
-.palm-note {
-	margin: 0;
-	font-size: 12px;
-	color: var(--muted);
-}
-
 .palm-result {
 	align-items: stretch;
 	text-align: center;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { describeShops, makeQuestions, QUESTION_COUNT, type Question } from '../games/palm/model';
+import { makeQuestions, QUESTION_COUNT, type Question } from '../games/palm/model';
 import { SHOPS } from '../games/palm/shops';
+import { HorizontalBandMap } from './PalmMiniMapPatterns';
 import './Palm.css';
 
 type Answer = { question: Question; chosen: number; correct: boolean };
@@ -77,12 +78,7 @@ const PalmPlay = ({ questions, onFinish, onQuit }: PlayProps) => {
           <p className={`palm-judge ${current.correct ? 'is-correct' : 'is-wrong'}`}>
             {current.correct ? '○ 正解！' : '✕ ざんねん'}
           </p>
-          <ul className='palm-places'>
-            {describeShops(current.question, SHOPS).map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          <p className='palm-note'>※左右は駅から中原街道へ向かったときの向き</p>
+          <HorizontalBandMap shops={SHOPS} marked={current.question.shops} />
           <button type='button' className='palm-primary' onClick={next}>
             {answers.length >= questions.length ? '結果を見る' : '次へ'}
           </button>
@@ -117,11 +113,7 @@ const PalmResult = ({ answers, onRetry, onTop }: ResultProps) => {
               <p className='palm-review-answer'>
                 答え: {answer.question.choices.find((choice) => choice.correct)?.label}
               </p>
-              <ul className='palm-places'>
-                {describeShops(answer.question, SHOPS).map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
+              <HorizontalBandMap shops={SHOPS} marked={answer.question.shops} />
             </li>
           ))}
         </ul>
