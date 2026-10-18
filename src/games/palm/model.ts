@@ -45,10 +45,8 @@ export const QUESTION_KINDS: QuestionKind[] = [
   'order'
 ];
 
-// 通常プレイで出す形式。notInSection・whichShop は内容を見直すまで出さない（?kind= で指定したときだけ出る）。
-export const DEFAULT_KINDS: QuestionKind[] = QUESTION_KINDS.filter(
-  (kind) => kind !== 'notInSection' && kind !== 'whichShop'
-);
+// 通常プレイで出す形式。notInSection は内容を見直すまで出さない（?kind= で指定したときだけ出る）。
+export const DEFAULT_KINDS: QuestionKind[] = QUESTION_KINDS.filter((kind) => kind !== 'notInSection');
 
 export type Question = {
   kind: QuestionKind;
@@ -289,13 +287,14 @@ const makeNotInSection = (shops: Shop[], rng: Rng): Question => {
   };
 };
 
-// ここは何の店？ ミニマップの点は厳密な位置ではないので、近すぎる店は不正解に使わない。
+// ここは何の店？ ミニマップの点は厳密な位置ではないので、正解と同じ区画の店は不正解に使わない。
 const makeWhichShop = (shops: Shop[], rng: Rng): Question => {
   const correct = pick(shops, rng);
-  const sameRest = shops.filter((shop) => sameSection(shop, correct) && Math.abs(shop.order - correct.order) > 3);
-  const otherRest = shops.filter((shop) => !sameSection(shop, correct));
-  // 同じ区画の店を優先し、足りない分を他の区画から補う。
-  const wrongs = [...pickMany(sameRest, 3, rng), ...pickMany(otherRest, 3, rng)].slice(0, 3);
+  const wrongs = pickMany(
+    shops.filter((shop) => !sameSection(shop, correct)),
+    3,
+    rng
+  );
   const choiceShops = shuffle([correct, ...wrongs], rng);
   return {
     kind: 'whichShop',
