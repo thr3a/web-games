@@ -27,7 +27,6 @@ export type QuestionKind =
   | 'section'
   | 'between'
   | 'nearest'
-  | 'oddOne'
   | 'notInSection'
   | 'whichShop'
   | 'order';
@@ -39,7 +38,6 @@ export const QUESTION_KINDS: QuestionKind[] = [
   'section',
   'between',
   'nearest',
-  'oddOne',
   'notInSection',
   'whichShop',
   'order'
@@ -232,35 +230,9 @@ const makeNearest = (shops: Shop[], rng: Rng): Question => {
   };
 };
 
-// 仲間はずれ。1 つのエリアから 3 店、別のエリアから 1 店（これが正解）。
-const makeOddOne = (shops: Shop[], rng: Rng): Question => {
-  const area = pick(AREAS, rng);
-  const correct = pick(
-    shops.filter((shop) => shop.area !== area),
-    rng
-  );
-  const choiceShops = shuffle(
-    [
-      correct,
-      ...pickMany(
-        shops.filter((shop) => shop.area === area),
-        3,
-        rng
-      )
-    ],
-    rng
-  );
-  return {
-    kind: 'oddOne',
-    text: '1 つだけエリアが違う店は？',
-    choices: shopChoices(choiceShops, correct),
-    shops: choiceShops,
-    keyShops: [correct]
-  };
-};
-
 // この区画にない店は？ 1 つの区画から 3 店、別の区画から 1 店（これが正解）。
-const makeNotInSection = (shops: Shop[], rng: Rng): Question => {
+// 左右は歩く向きで入れ替わるので、問題文に向きを付けてその向きでの左手・右手で出す。
+const makeNotInSection = (shops: Shop[], direction: Direction, rng: Rng): Question => {
   const base = pick(shops, rng);
   const correct = pick(
     shops.filter((shop) => !sameSection(shop, base)),
@@ -279,7 +251,7 @@ const makeNotInSection = (shops: Shop[], rng: Rng): Question => {
   );
   return {
     kind: 'notInSection',
-    text: `PALM-${base.area}の${base.side === 'left' ? '左側' : '右側'}にない店は？`,
+    text: `${directionText(direction)}PALM-${base.area}の${handOf(base, direction) === 'left' ? '左手' : '右手'}にない店は？`,
     choices: shopChoices(choiceShops, correct),
     shops: choiceShops,
     keyShops: [correct],
@@ -359,8 +331,7 @@ export const makeQuestion = (shops: Shop[], rng: Rng, kinds: QuestionKind[] = DE
     section: () => makeSection(shops, rng),
     between: () => makeBetween(shops, rng),
     nearest: () => makeNearest(shops, rng),
-    oddOne: () => makeOddOne(shops, rng),
-    notInSection: () => makeNotInSection(shops, rng),
+    notInSection: () => makeNotInSection(shops, direction, rng),
     whichShop: () => makeWhichShop(shops, rng),
     order: () => makeOrder(shops, direction, rng)
   };
