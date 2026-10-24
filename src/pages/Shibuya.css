@@ -1,0 +1,215 @@
+.shibuya-page {
+	position: fixed;
+	inset: 0;
+	overflow: hidden;
+	background: #d4e6f4;
+	color: #ffffff;
+	font-family: "Hiragino Sans", Meiryo, sans-serif;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.shibuya-canvas {
+	position: absolute;
+	inset: 0;
+	cursor: grab;
+}
+
+.shibuya-canvas:active {
+	cursor: grabbing;
+}
+
+.shibuya-canvas canvas {
+	display: block;
+}
+
+/* 左上: 信号の状態 */
+.shibuya-panel {
+	position: absolute;
+	top: 16px;
+	left: 16px;
+	min-width: 230px;
+	padding: 14px 16px;
+	border-radius: 12px;
+	background: rgb(20 24 32 / 0.72);
+	backdrop-filter: blur(6px);
+	box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+	pointer-events: none;
+}
+
+.shibuya-title {
+	margin: 0 0 8px;
+	font-size: 15px;
+	font-weight: 900;
+	letter-spacing: 0.12em;
+}
+
+.shibuya-phase {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 10px;
+	font-size: 14px;
+	font-weight: 700;
+}
+
+.shibuya-phase-number {
+	display: inline-grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: #ffffff;
+	color: #1b1f27;
+	font-size: 13px;
+	font-weight: 900;
+}
+
+.shibuya-lamps {
+	display: grid;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.shibuya-lamp {
+	display: grid;
+	grid-template-columns: 14px 1fr auto;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+}
+
+.shibuya-lamp-dot {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: #3a3f47;
+}
+
+.shibuya-lamp-green {
+	background: #19d3a2;
+	box-shadow: 0 0 8px #19d3a2;
+}
+
+.shibuya-lamp-yellow {
+	background: #ffc21a;
+	box-shadow: 0 0 8px #ffc21a;
+}
+
+.shibuya-lamp-red {
+	background: #ff3b30;
+	box-shadow: 0 0 8px #ff3b30;
+}
+
+.shibuya-lamp-flash {
+	background: #19d3a2;
+	animation: shibuya-blink 1s steps(2, jump-none) infinite;
+}
+
+@keyframes shibuya-blink {
+	50% {
+		opacity: 0.15;
+	}
+}
+
+.shibuya-lamp-state {
+	font-weight: 700;
+	opacity: 0.9;
+}
+
+.shibuya-counts {
+	margin: 10px 0 0;
+	font-size: 12px;
+	opacity: 0.75;
+}
+
+/* 下中央: 定点カメラの切り替え */
+.shibuya-views {
+	position: absolute;
+	left: 50%;
+	bottom: 18px;
+	display: flex;
+	gap: 6px;
+	padding: 6px;
+	border-radius: 14px;
+	background: rgb(20 24 32 / 0.72);
+	backdrop-filter: blur(6px);
+	box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+	transform: translateX(-50%);
+}
+
+.shibuya-view {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 14px;
+	border: 0;
+	border-radius: 10px;
+	background: transparent;
+	color: #ffffff;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 700;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.shibuya-view:hover {
+	background: rgb(255 255 255 / 0.12);
+}
+
+.shibuya-view-active {
+	background: #ffffff;
+	color: #1b1f27;
+}
+
+.shibuya-view-active:hover {
+	background: #ffffff;
+}
+
+.shibuya-view-key {
+	display: inline-grid;
+	place-items: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 5px;
+	background: rgb(255 255 255 / 0.18);
+	font-size: 11px;
+}
+
+.shibuya-view-active .shibuya-view-key {
+	background: #1b1f27;
+	color: #ffffff;
+}
+
+.shibuya-hint {
+	position: absolute;
+	top: 16px;
+	right: 16px;
+	padding: 6px 10px;
+	border-radius: 8px;
+	background: rgb(255 255 255 / 0.6);
+	margin: 0;
+	font-size: 12px;
+	color: rgb(20 24 32 / 0.75);
+	text-shadow: 0 1px 0 rgb(255 255 255 / 0.6);
+	pointer-events: none;
+}
+
+.shibuya-credit {
+	position: absolute;
+	right: 8px;
+	bottom: 6px;
+	padding: 2px 6px;
+	border-radius: 4px;
+	background: rgb(255 255 255 / 0.6);
+	margin: 0;
+	font-size: 11px;
+	color: rgb(20 24 32 / 0.75);
+}
+
+.shibuya-credit a {
+	color: inherit;
+}

@@ -9,6 +9,7 @@ const SubwayRush = lazy(() => import('./pages/SubwayRush'));
 const Shikaku = lazy(() => import('./pages/Shikaku'));
 const Palm = lazy(() => import('./pages/Palm'));
 const PalmDebug = lazy(() => import('./pages/PalmDebug'));
+const Shibuya = lazy(() => import('./pages/Shibuya'));
 
 const App = () => {
   return (
@@ -53,6 +54,14 @@ const App = () => {
           element={
             <Suspense fallback={<p role='status'>ゲームを読み込んでいます…</p>}>
               <PalmDebug />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/shibuya'
+          element={
+            <Suspense fallback={<p role='status'>シミュレーターを読み込んでいます…</p>}>
+              <Shibuya />
             </Suspense>
           }
         />
