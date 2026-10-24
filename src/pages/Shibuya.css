@@ -125,6 +125,34 @@
 	opacity: 0.75;
 }
 
+/* パネル全体はドラッグ操作を邪魔しないよう pointer-events: none なので、スライダーだけ受け付ける */
+.shibuya-crossers {
+	display: grid;
+	gap: 6px;
+	margin-top: 12px;
+	padding-top: 10px;
+	border-top: 1px solid rgb(255 255 255 / 0.15);
+	pointer-events: auto;
+}
+
+.shibuya-crossers-head {
+	display: flex;
+	justify-content: space-between;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.shibuya-crossers-value {
+	font-variant-numeric: tabular-nums;
+}
+
+.shibuya-crossers-input {
+	width: 100%;
+	margin: 0;
+	accent-color: #19d3a2;
+	cursor: pointer;
+}
+
 /* 下中央: 定点カメラの切り替え */
 .shibuya-views {
 	position: absolute;

@@ -204,11 +204,13 @@ export const crosswalkPolygon = (crosswalk: Crosswalk): Vec[] => [
 // 道筋は遠くの入口から角の集まる地点（hub）まで。width は横にばらける幅（片側）。
 export type Arm = { weight: number; width: number; line: Vec[] };
 // 横断歩道の端で待つ位置の決め方。via を通ってから待つ位置へ行く。setback は縁石から下がる距離の範囲。
+// room は人が多いときに下がってよい最大の距離（その先は建物や車道）。
 export type CrosswalkEnd = {
   crosswalk: Crosswalk['id'];
   via: Vec[];
   span: [number, number];
   setback: [number, number];
+  room: number;
 };
 export type Corner = { id: CornerId; hub: Vec; arms: Arm[]; ends: CrosswalkEnd[] };
 
@@ -279,9 +281,9 @@ export const CORNERS: Corner[] = [
       }
     ],
     ends: [
-      { crosswalk: 'W', via: [], span: [0.08, 0.92], setback: [0.4, 3.2] },
-      { crosswalk: 'D', via: [], span: [0.08, 0.92], setback: [0.4, 3.5] },
-      { crosswalk: 'N', via: [v(-3.6, -19.4)], span: [0.08, 0.92], setback: [0.4, 2.2] }
+      { crosswalk: 'W', via: [], span: [0.08, 0.92], setback: [0.4, 3.2], room: 10 },
+      { crosswalk: 'D', via: [], span: [0.08, 0.92], setback: [0.4, 3.5], room: 10 },
+      { crosswalk: 'N', via: [v(-3.6, -19.4)], span: [0.08, 0.92], setback: [0.4, 2.2], room: 9 }
     ]
   },
   {
@@ -328,8 +330,8 @@ export const CORNERS: Corner[] = [
       }
     ],
     ends: [
-      { crosswalk: 'N', via: [], span: [0.08, 0.92], setback: [0.4, 2] },
-      { crosswalk: 'E', via: [v(15.6, -15.3), v(15.3, -12.8)], span: [0.12, 0.5], setback: [0.4, 1.4] }
+      { crosswalk: 'N', via: [], span: [0.08, 0.92], setback: [0.4, 2], room: 3.5 },
+      { crosswalk: 'E', via: [v(15.6, -15.3), v(15.3, -12.8)], span: [0.12, 0.5], setback: [0.4, 1.4], room: 3 }
     ]
   },
   {
@@ -369,9 +371,9 @@ export const CORNERS: Corner[] = [
       }
     ],
     ends: [
-      { crosswalk: 'E', via: [], span: [0.08, 0.92], setback: [0.4, 3.5] },
-      { crosswalk: 'D', via: [], span: [0.08, 0.92], setback: [0.4, 3.5] },
-      { crosswalk: 'S', via: [], span: [0.08, 0.92], setback: [0.4, 3.5] }
+      { crosswalk: 'E', via: [], span: [0.08, 0.92], setback: [0.4, 3.5], room: 10 },
+      { crosswalk: 'D', via: [], span: [0.08, 0.92], setback: [0.4, 3.5], room: 9 },
+      { crosswalk: 'S', via: [], span: [0.08, 0.92], setback: [0.4, 3.5], room: 9 }
     ]
   },
   {
@@ -414,8 +416,8 @@ export const CORNERS: Corner[] = [
       }
     ],
     ends: [
-      { crosswalk: 'W', via: [], span: [0.08, 0.85], setback: [0.4, 3] },
-      { crosswalk: 'S', via: [], span: [0.08, 0.92], setback: [0.4, 3.5] }
+      { crosswalk: 'W', via: [], span: [0.08, 0.85], setback: [0.4, 3], room: 9 },
+      { crosswalk: 'S', via: [], span: [0.08, 0.92], setback: [0.4, 3.5], room: 9 }
     ]
   }
 ];

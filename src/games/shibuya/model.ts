@@ -8,6 +8,7 @@ import {
   CORNERS,
   type Corner,
   type CornerId,
+  type CrosswalkEnd,
   cornerOf,
   createPolyline,
   crosswalkEndPoint,
@@ -23,6 +24,7 @@ import {
   TRACKS,
   type Vec
 } from './layout';
+import { OSM_BUILDINGS } from './osm';
 
 export type { Axis, Dir, Vec };
 
@@ -262,9 +264,12 @@ export type Ped = {
   side: number;
   look: number;
   height: number;
+  // 交差点まわりだけに出る人（角の近くで現れ、渡ったら少し歩いて消える）
+  crowd: boolean;
 };
 
 export const PED_RULES = {
+  // 街全体を歩く人の数。遠くの歩道はこの人数で足りている。
   count: 300,
   minSpeed: 1.15,
   maxSpeed: 1.65,
@@ -272,13 +277,38 @@ export const PED_RULES = {
   hurry: 1.7,
   avoidRadius: 0.9,
   arrive: 0.5,
-  crossRatio: 0.8
+  crossRatio: 0.8,
+  // 1 回のスクランブルで渡る人数の目安（画面のスライダーで選ぶ）
+  crossersMin: 150,
+  crossersMax: 1000,
+  crossersInitial: 500,
+  crossersStep: 50,
+  // count 人のうち 1 回のスクランブルで渡るのは約 145 人（実測）。目安との差は交差点まわりだけの人で埋める。
+  baseCrossers: 145,
+  // 交差点まわりだけの人 1 人あたり、1 回のスクランブルで渡る人数（実測）
+  crowdRate: 1,
+  // 交差点まわりだけの人が現れる・消える位置（角の hub から歩道をさかのぼった距離）
+  crowdSpawnMin: 10,
+  crowdSpawnMax: 25,
+  crowdLeaveMin: 6,
+  crowdLeaveMax: 15,
+  // 信号待ちの人だまりを広げるときの 1 人あたりの面積（m²）
+  crowdArea: 0.45
 };
+
+// 1 回で渡る人数の目安に対する、交差点まわりだけの人の数
+export const crowdFor = (crossers: number) =>
+  Math.max(0, Math.round((crossers - PED_RULES.baseCrossers) / PED_RULES.crowdRate));
+
+// 歩行者の最大数（描画用のバッファの大きさ）
+export const PED_CAPACITY = PED_RULES.count + crowdFor(PED_RULES.crossersMax);
 
 const range = (random: () => number, min: number, max: number) => min + random() * (max - min);
 
 // 歩き始める角の選ばれやすさ（人の多い QFRONT 側とハチ公前広場を多めにする）
 const CORNER_WEIGHTS: Record<CornerId, number> = { NW: 0.32, NE: 0.18, SE: 0.32, SW: 0.18 };
+// 交差点まわりだけの人は、待つ場所の広さに合わせてさらに偏らせる（MAGNET 前の角は歩道が狭い）
+const CROWD_CORNER_WEIGHTS: Record<CornerId, number> = { NW: 0.36, NE: 0.08, SE: 0.38, SW: 0.18 };
 
 const pickWeighted = <T extends { weight: number }>(random: () => number, list: T[]): T => {
   const total = list.reduce((sum, item) => sum + item.weight, 0);
@@ -296,7 +326,102 @@ const pickArm = (random: () => number, corner: Corner): Vec[] => {
   return offsetPoints(arm.line, range(random, -arm.width, arm.width));
 };
 
+// 折れ線の終点から length だけさかのぼった部分
+const tailOf = (list: Vec[], length: number): Vec[] => {
+  let rest = length;
+  for (let i = list.length - 1; i > 0; i--) {
+    const a = list[i - 1];
+    const b = list[i];
+    const d = Math.hypot(b.x - a.x, b.z - a.z);
+    if (d >= rest) {
+      const t = rest / d;
+      return [{ x: b.x + (a.x - b.x) * t, z: b.z + (a.z - b.z) * t }, ...list.slice(i)];
+    }
+    rest -= d;
+  }
+  return list;
+};
+
+// 信号待ちの人が建物の中に入らないよう、交差点の近くにある地面の建物を先に拾っておく
+type Footprint = { points: Vec[]; minX: number; maxX: number; minZ: number; maxZ: number };
+const NEAR_BUILDINGS: Footprint[] = OSM_BUILDINGS.filter((item) => item.b === 0)
+  .map((item) => {
+    const points: Vec[] = [];
+    for (let i = 0; i < item.p.length; i += 2) points.push({ x: item.p[i], z: item.p[i + 1] });
+    const xs = points.map((p) => p.x);
+    const zs = points.map((p) => p.z);
+    return { points, minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) };
+  })
+  .filter((item) => item.minX < 80 && item.maxX > -80 && item.minZ < 80 && item.maxZ > -80);
+
+const inBuilding = (p: Vec) =>
+  NEAR_BUILDINGS.some(
+    (item) =>
+      p.x >= item.minX && p.x <= item.maxX && p.z >= item.minZ && p.z <= item.maxZ && pointInPolygon(p, item.points)
+  );
+
+const isBlocked = (p: Vec) => pointInPolygon(p, JUNCTION) || inBuilding(p);
+
+const endSide = (corner: Corner, end: CrosswalkEnd) => (crosswalkOf(end.crosswalk).from === corner.id ? 'a' : 'b');
+
+// 横断歩道の端で人が並べる幅（m）
+const endWidth = (corner: Corner, end: CrosswalkEnd) => {
+  const [p, q] = crosswalkOf(end.crosswalk)[endSide(corner, end)];
+  return Math.hypot(q.x - p.x, q.z - p.z) * (end.span[1] - end.span[0]);
+};
+
+// 横断歩道の端で待てる広さ（m²）
+const endCapacity = (corner: Corner, end: CrosswalkEnd) => endWidth(corner, end) * (end.room - end.setback[0]);
+
+// 交差点まわりだけの人が crowd 人いるとき、この端の人だまりが縁石からどこまで下がるか
+const crowdDepth = (corner: Corner, end: CrosswalkEnd, crowd: number) => {
+  const weightTotal = CORNERS.reduce((sum, item) => sum + CROWD_CORNER_WEIGHTS[item.id], 0);
+  const capacityTotal = corner.ends.reduce((sum, item) => sum + endCapacity(corner, item), 0);
+  const waiters =
+    ((crowd * CROWD_CORNER_WEIGHTS[corner.id]) / weightTotal) * (endCapacity(corner, end) / capacityTotal);
+  const depth = end.setback[0] + (waiters * PED_RULES.crowdArea) / endWidth(corner, end);
+  return Math.min(end.room, Math.max(end.setback[1], depth));
+};
+
 type Route = { path: Vec[]; waitIndex: number };
+
+// from の角の start の端で待って横断歩道を渡り、渡った先の角から armOut で出ていく道筋。
+// pickSetback は待つ位置を縁石から下げる距離を選ぶ。
+const crossingRoute = (
+  random: () => number,
+  from: Corner,
+  start: CrosswalkEnd,
+  armIn: Vec[],
+  pickSetback: () => number,
+  armOut: (to: Corner) => Vec[]
+): Route => {
+  const crosswalk = crosswalkOf(start.crosswalk);
+  const side = endSide(from, start);
+  const to = cornerOf(side === 'a' ? crosswalk.to : crosswalk.from);
+  const goal = to.ends.find((end) => end.crosswalk === crosswalk.id);
+  if (!goal) throw new Error(`corner ${to.id} has no end for crosswalk ${crosswalk.id}`);
+  // 待つ位置と渡った先が横断歩道の同じ筋にのるよう、両端で使える範囲の重なりから選ぶ
+  const t0 = Math.max(start.span[0], goal.span[0]);
+  const t1 = Math.min(start.span[1], goal.span[1]);
+  let t = range(random, t0, t1);
+  let wait = crosswalkEndPoint(crosswalk, side, t, pickSetback());
+  // 建物に入ってしまったら選び直し、だめなら縁石のすぐ外で待つ
+  for (let i = 0; i < 8 && isBlocked(wait); i++) {
+    t = range(random, t0, t1);
+    wait = crosswalkEndPoint(crosswalk, side, t, pickSetback());
+  }
+  if (isBlocked(wait)) wait = crosswalkEndPoint(crosswalk, side, t, start.setback[0]);
+  const arrive = crosswalkEndPoint(
+    crosswalk,
+    side === 'a' ? 'b' : 'a',
+    Math.min(t1, Math.max(t0, t + (random() - 0.5) * 0.08)),
+    range(random, goal.setback[0], Math.min(goal.setback[1], 1.8))
+  );
+  return {
+    path: [...armIn, ...start.via, wait, arrive, ...[...goal.via].reverse(), ...armOut(to)],
+    waitIndex: armIn.length + start.via.length
+  };
+};
 
 export const createRoute = (random: () => number): Route => {
   const from = pickWeighted(
@@ -311,27 +436,38 @@ export const createRoute = (random: () => number): Route => {
   }
   // この角につながる横断歩道から 1 本選ぶ（斜め横断は QFRONT 前とハチ公前の間だけ）
   const start = from.ends[Math.floor(random() * from.ends.length)];
-  const crosswalk = crosswalkOf(start.crosswalk);
-  const side = crosswalk.from === from.id ? 'a' : 'b';
-  const to = cornerOf(side === 'a' ? crosswalk.to : crosswalk.from);
-  const goal = to.ends.find((end) => end.crosswalk === crosswalk.id);
-  if (!goal) throw new Error(`corner ${to.id} has no end for crosswalk ${crosswalk.id}`);
-  // 待つ位置と渡った先が横断歩道の同じ筋にのるよう、両端で使える範囲の重なりから選ぶ
-  const t0 = Math.max(start.span[0], goal.span[0]);
-  const t1 = Math.min(start.span[1], goal.span[1]);
-  const t = range(random, t0, t1);
-  const wait = crosswalkEndPoint(crosswalk, side, t, range(random, start.setback[0], start.setback[1]));
-  const arrive = crosswalkEndPoint(
-    crosswalk,
-    side === 'a' ? 'b' : 'a',
-    Math.min(t1, Math.max(t0, t + (random() - 0.5) * 0.08)),
-    range(random, goal.setback[0], Math.min(goal.setback[1], 1.8))
+  return crossingRoute(
+    random,
+    from,
+    start,
+    armIn,
+    () => range(random, start.setback[0], start.setback[1]),
+    (to) => pickArm(random, to).reverse()
   );
-  const armOut = pickArm(random, to).reverse();
-  return {
-    path: [...armIn, ...start.via, wait, arrive, ...[...goal.via].reverse(), ...armOut],
-    waitIndex: armIn.length + start.via.length
-  };
+};
+
+// 交差点まわりだけの人の道筋。角の近くで現れて必ず渡り、渡った先で少し歩いて消える。
+// crowd はこの種類の人の総数で、多いほど信号待ちの人だまりを歩道の奥へ広げる。
+export const createCrowdRoute = (random: () => number, crowd: number): Route => {
+  const from = pickWeighted(
+    random,
+    CORNERS.map((corner) => ({ corner, weight: CROWD_CORNER_WEIGHTS[corner.id] }))
+  ).corner;
+  // 広く待てる端ほど選ばれやすくする
+  const start = pickWeighted(
+    random,
+    from.ends.map((end) => ({ end, weight: endCapacity(from, end) }))
+  ).end;
+  const armIn = tailOf(pickArm(random, from), range(random, PED_RULES.crowdSpawnMin, PED_RULES.crowdSpawnMax));
+  const depth = crowdDepth(from, start, crowd);
+  return crossingRoute(
+    random,
+    from,
+    start,
+    armIn,
+    () => range(random, start.setback[0], depth),
+    (to) => tailOf(pickArm(random, to), range(random, PED_RULES.crowdLeaveMin, PED_RULES.crowdLeaveMax)).reverse()
+  );
 };
 
 // 渡っている途中（待つ地点 → 渡った先）かどうか
@@ -351,6 +487,9 @@ const assignRoute = (ped: Ped, route: Route, random: () => number) => {
   ped.heading = Math.atan2(next.x - ped.x, next.z - ped.z);
 };
 
+const routeFor = (model: Model, crowd: boolean) =>
+  crowd ? createCrowdRoute(model.random, model.crowdCount) : createRoute(model.random);
+
 // 最初の配置。道のりのどこか（横断中を除く）に置く。
 const placeOnRoute = (ped: Ped, random: () => number) => {
   const segments = ped.path.length - 1;
@@ -366,7 +505,30 @@ const placeOnRoute = (ped: Ped, random: () => number) => {
   ped.heading = Math.atan2(b.x - a.x, b.z - a.z);
 };
 
-const createPed = (model: Model): Ped => {
+// 交差点まわりだけの人の最初の配置。すぐにぎわって見えるよう、多くは待つ位置に置く。
+const placeCrowd = (ped: Ped, random: () => number) => {
+  if (random() < 0.6) {
+    const wait = ped.path[ped.waitIndex];
+    const next = ped.path[ped.waitIndex + 1];
+    ped.x = wait.x;
+    ped.z = wait.z;
+    ped.index = ped.waitIndex;
+    ped.state = 'wait';
+    ped.heading = Math.atan2(next.x - wait.x, next.z - wait.z);
+    return;
+  }
+  const k = Math.floor(random() * ped.waitIndex);
+  const a = ped.path[k];
+  const b = ped.path[k + 1];
+  const t = random();
+  ped.x = a.x + (b.x - a.x) * t;
+  ped.z = a.z + (b.z - a.z) * t;
+  ped.index = k + 1;
+  ped.state = 'walk';
+  ped.heading = Math.atan2(b.x - a.x, b.z - a.z);
+};
+
+const createPed = (model: Model, crowd: boolean): Ped => {
   const ped: Ped = {
     id: model.nextId++,
     x: 0,
@@ -380,10 +542,22 @@ const createPed = (model: Model): Ped => {
     delay: 0,
     side: 0,
     look: Math.floor(model.random() * 100000),
-    height: range(model.random, 0.9, 1.06)
+    height: range(model.random, 0.9, 1.06),
+    crowd
   };
-  assignRoute(ped, createRoute(model.random), model.random);
+  assignRoute(ped, routeFor(model, crowd), model.random);
   return ped;
+};
+
+// 1 回で渡る人数の目安を変える。交差点まわりだけの人を作り直し、街全体を歩く人はそのまま。
+export const setCrossers = (model: Model, crossers: number) => {
+  model.crowdCount = crowdFor(crossers);
+  model.peds = model.peds.filter((ped) => !ped.crowd);
+  for (let i = 0; i < model.crowdCount; i++) {
+    const ped = createPed(model, true);
+    placeCrowd(ped, model.random);
+    model.peds.push(ped);
+  }
 };
 
 const turnTo = (current: number, target: number, amount: number) => {
@@ -396,7 +570,7 @@ const turnTo = (current: number, target: number, amount: number) => {
 const arrive = (model: Model, ped: Ped) => {
   if (ped.index === ped.path.length - 1) {
     // 目的地に着いたら、別の入口から新しい人として現れる
-    assignRoute(ped, createRoute(model.random), model.random);
+    assignRoute(ped, routeFor(model, ped.crowd), model.random);
     ped.look = Math.floor(model.random() * 100000);
     return;
   }
@@ -408,24 +582,55 @@ const arrive = (model: Model, ped: Ped) => {
   ped.index++;
 };
 
+// 近くの人だけを調べるための格子。1 マスは回避で見る距離（avoidRadius）より大きくし、隣のマスまで見れば足りるようにする。
+const GRID_CELL = 1;
+export type PedGrid = Map<number, Ped[]>;
+
+const cellOf = (value: number) => Math.floor(value / GRID_CELL) + 1024;
+const cellKey = (ix: number, iz: number) => ix * 4096 + iz;
+
+const buildGrid = (model: Model) => {
+  for (const list of model.grid.values()) list.length = 0;
+  for (const ped of model.peds) {
+    const key = cellKey(cellOf(ped.x), cellOf(ped.z));
+    const list = model.grid.get(key);
+    if (list) list.push(ped);
+    else model.grid.set(key, [ped]);
+  }
+};
+
+// (x, z) のまわり 3×3 マスにいる人を順に渡す
+const forEachNear = (grid: PedGrid, x: number, z: number, visit: (other: Ped) => void) => {
+  const ix = cellOf(x);
+  const iz = cellOf(z);
+  for (let i = ix - 1; i <= ix + 1; i++) {
+    for (let k = iz - 1; k <= iz + 1; k++) {
+      const list = grid.get(cellKey(i, k));
+      if (!list) continue;
+      for (const other of list) visit(other);
+    }
+  }
+};
+
 // 信号待ちの人どうしが重なりすぎないよう、近すぎる相手から少しだけ離れる（車道側へは出ない）
-const separate = (ped: Ped, peds: Ped[], dt: number) => {
+const separate = (ped: Ped, grid: PedGrid, dt: number) => {
   const gap = 0.55;
   let px = 0;
   let pz = 0;
-  for (const other of peds) {
-    if (other === ped) continue;
+  forEachNear(grid, ped.x, ped.z, (other) => {
+    if (other === ped) return;
     const ox = ped.x - other.x;
     const oz = ped.z - other.z;
-    if (Math.abs(ox) > gap || Math.abs(oz) > gap) continue;
+    if (Math.abs(ox) > gap || Math.abs(oz) > gap) return;
     const d = Math.hypot(ox, oz);
-    if (d > gap || d < 1e-4) continue;
+    if (d > gap || d < 1e-4) return;
     px += (ox / d) * (gap - d);
     pz += (oz / d) * (gap - d);
-  }
+  });
   if (px === 0 && pz === 0) return;
   const next = { x: ped.x + px * Math.min(1, dt * 3), z: ped.z + pz * Math.min(1, dt * 3) };
-  if (pointInPolygon(next, JUNCTION)) return;
+  // 建物の中にも押し出さない
+  if (isBlocked(next)) return;
   ped.x = next.x;
   ped.z = next.z;
 };
@@ -434,14 +639,14 @@ const stepPeds = (model: Model, dt: number) => {
   const signal = model.signal;
   const light = pedLight(signal);
   const canStart = signal.phase === 'walk' && signal.elapsed < SIGNAL.walk - SIGNAL.walkStartMargin;
-  const peds = model.peds;
   const radius = PED_RULES.avoidRadius;
-  for (const ped of peds) {
+  buildGrid(model);
+  for (const ped of model.peds) {
     if (ped.state === 'wait') {
       const next = ped.path[ped.index + 1];
       ped.heading = turnTo(ped.heading, Math.atan2(next.x - ped.x, next.z - ped.z), dt * 4);
       if (!canStart || signal.elapsed < ped.delay) {
-        separate(ped, peds, dt);
+        separate(ped, model.grid, dt);
         continue;
       }
       ped.state = 'cross';
@@ -459,17 +664,17 @@ const stepPeds = (model: Model, dt: number) => {
     const fz = dz / dist;
     // 前方の近い人を避ける。進行方向に対して相手がいる側と反対へ少しずれる。
     let lateral = 0;
-    for (const other of peds) {
-      if (other === ped) continue;
+    forEachNear(model.grid, ped.x, ped.z, (other) => {
+      if (other === ped) return;
       const ox = other.x - ped.x;
       const oz = other.z - ped.z;
-      if (Math.abs(ox) > radius || Math.abs(oz) > radius) continue;
+      if (Math.abs(ox) > radius || Math.abs(oz) > radius) return;
       const d = Math.hypot(ox, oz);
-      if (d > radius || d < 1e-4) continue;
-      if (ox * fx + oz * fz < -0.1) continue;
+      if (d > radius || d < 1e-4) return;
+      if (ox * fx + oz * fz < -0.1) return;
       const side = fx * oz - fz * ox;
       lateral -= (side >= 0 ? 1 : -1) * (1 - d / radius);
-    }
+    });
     lateral = Math.max(-1, Math.min(1, lateral));
     ped.side += (lateral - ped.side) * Math.min(1, dt * 5);
     const hurry = ped.state === 'cross' && light !== 'green' ? PED_RULES.hurry : 1;
@@ -579,6 +784,9 @@ export type Model = {
   signal: Signal;
   lanes: Lane[];
   peds: Ped[];
+  // 交差点まわりだけに出る人の数
+  crowdCount: number;
+  grid: PedGrid;
   trains: Train[];
   crossing: number;
   nextId: number;
@@ -657,7 +865,8 @@ export const stepModel = (model: Model, dt: number) => {
   }
 };
 
-export type ModelOptions = { random?: () => number; warmUp?: number; signal?: Signal; peds?: number };
+// crossers は 1 回のスクランブルで渡る人数の目安
+export type ModelOptions = { random?: () => number; warmUp?: number; signal?: Signal; crossers?: number };
 
 // 開いた瞬間から街がにぎわって見えるよう、少し時間を進めてから表示する。
 // 初期の信号は、表示が始まって十数秒後にスクランブルになるように選んでいる。
@@ -669,6 +878,8 @@ export const createModel = (options: ModelOptions = {}): Model => {
     signal: options.signal ?? { phase: 'carA', elapsed: 0 },
     lanes: createLanes(random),
     peds: [],
+    crowdCount: 0,
+    grid: new Map(),
     trains: [
       { route: 0, s: TRAIN_ROUTES[0].stopS * 0.6, v: TRAIN.maxSpeed, state: 'run', timer: 0, served: false },
       { route: 1, s: 0, v: 0, state: 'away', timer: 12, served: false }
@@ -677,12 +888,12 @@ export const createModel = (options: ModelOptions = {}): Model => {
     nextId: 1,
     random
   };
-  const count = options.peds ?? PED_RULES.count;
-  for (let i = 0; i < count; i++) {
-    const ped = createPed(model);
+  for (let i = 0; i < PED_RULES.count; i++) {
+    const ped = createPed(model, false);
     placeOnRoute(ped, random);
     model.peds.push(ped);
   }
+  setCrossers(model, options.crossers ?? PED_RULES.crossersInitial);
   let rest = options.warmUp ?? 0;
   while (rest > 0) {
     const part = Math.min(0.1, rest);

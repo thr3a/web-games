@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CarLight, PedLight } from '../games/shibuya/model';
+import { type CarLight, PED_RULES, type PedLight } from '../games/shibuya/model';
 import { createShibuyaSim, type SimController, type SimSnapshot, VIEWS } from '../games/shibuya/scene';
 import './Shibuya.css';
 
@@ -30,6 +30,17 @@ const Shibuya = () => {
   const canvasParent = useRef<HTMLDivElement>(null);
   const controller = useRef<SimController | null>(null);
   const [state, setState] = useState<SimSnapshot>(INITIAL);
+  const slider = useRef<HTMLInputElement>(null);
+  const [crossers, setCrossers] = useState(PED_RULES.crossersInitial);
+
+  // React の onChange はドラッグ中も呼ばれるので、つまみを離したときに出るネイティブの change で反映する
+  useEffect(() => {
+    const input = slider.current;
+    if (!input) return;
+    const onCommit = () => controller.current?.setCrossers(Number(input.value));
+    input.addEventListener('change', onCommit);
+    return () => input.removeEventListener('change', onCommit);
+  }, []);
 
   useEffect(() => {
     const parent = canvasParent.current;
@@ -73,6 +84,24 @@ const Shibuya = () => {
         <p className='shibuya-counts'>
           車 {state.cars} 台 ・ 信号待ち {state.waiting} 人
         </p>
+        <label className='shibuya-crossers'>
+          <span className='shibuya-crossers-head'>
+            <span>1 回で渡る人数</span>
+            <span className='shibuya-crossers-value'>約 {crossers} 人</span>
+          </span>
+          <input
+            ref={slider}
+            className='shibuya-crossers-input'
+            type='range'
+            min={PED_RULES.crossersMin}
+            max={PED_RULES.crossersMax}
+            step={PED_RULES.crossersStep}
+            value={crossers}
+            onChange={(event) => setCrossers(Number(event.currentTarget.value))}
+            // フォーカスが残ると、数字キーで定点を切り替えたときに枠が出るので外す
+            onPointerUp={(event) => event.currentTarget.blur()}
+          />
+        </label>
       </section>
 
       <nav className='shibuya-views' aria-label='定点カメラ'>

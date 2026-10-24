@@ -1,4 +1,4 @@
-// このファイルは src/scripts/shibuyaOsm.ts で生成している。手で編集しない。
+// このファイルは tools/shibuyaOsm.ts で生成している。手で編集しない。
 // 出典: © OpenStreetMap contributors（ODbL） データの時点: 2026-10-24T15:32:07Z
 // 座標はスクランブル交差点の中心が原点、x が東・z が南（m）。p は [x0, z0, x1, z1, ...]。
 

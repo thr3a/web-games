@@ -11,9 +11,11 @@ import {
   createModel,
   LAYOUT,
   majorPhase,
+  PED_CAPACITY,
   PED_RULES,
   type PedLight,
   pedLight,
+  setCrossers,
   stepModel,
   TRAIN,
   trainPose
@@ -28,7 +30,12 @@ export type SimSnapshot = {
   waiting: number;
   view: number;
 };
-export type SimController = { setView: (index: number) => void; destroy: () => void };
+export type SimController = {
+  setView: (index: number) => void;
+  // 1 回のスクランブルで渡る人数の目安を変える
+  setCrossers: (crossers: number) => void;
+  destroy: () => void;
+};
 
 type View = { label: string; position: [number, number, number]; target: [number, number, number] };
 
@@ -220,7 +227,7 @@ const lightUp = (set: LampSet, light: CarLight) => {
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
 export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSnapshot) => void): SimController => {
-  const model = createModel({ warmUp: 30 });
+  const model = createModel({ warmUp: 30, crossers: PED_RULES.crossersInitial });
   const disposables: { dispose: () => void }[] = [];
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -351,7 +358,7 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
   const pedMeshes: PedMesh[] = pedKeys.map((key) => {
     const part = PED_PARTS[key];
     const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
-    const mesh = new THREE.InstancedMesh(part.shape === 'ball' ? ballGeometry : boxGeometry, material, PED_RULES.count);
+    const mesh = new THREE.InstancedMesh(part.shape === 'ball' ? ballGeometry : boxGeometry, material, PED_CAPACITY);
     mesh.castShadow = true;
     mesh.receiveShadow = false;
     mesh.frustumCulled = false;
@@ -361,7 +368,7 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
   });
 
   // 見た目（服の色など）は人ごとの look から決める。入れ替わったときだけ色を塗り直す。
-  const pedLooks = new Array<number>(PED_RULES.count).fill(-1);
+  const pedLooks = new Array<number>(PED_CAPACITY).fill(-1);
   const syncPeds = () => {
     model.peds.forEach((ped, i) => {
       quaternion.setFromAxisAngle(up, ped.heading);
@@ -378,6 +385,8 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
       });
     });
     for (const part of pedMeshes) {
+      // 人数を減らしたときに、使わなくなった分を描かないようにする
+      part.mesh.count = model.peds.length;
       part.mesh.instanceMatrix.needsUpdate = true;
       if (part.mesh.instanceColor) part.mesh.instanceColor.needsUpdate = true;
     }
@@ -556,6 +565,7 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
 
   return {
     setView,
+    setCrossers: (crossers: number) => setCrossers(model, crossers),
     destroy: () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
