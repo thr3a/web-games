@@ -884,6 +884,7 @@ export const createCity = (): City => {
   const PAINT_Y = 0.06;
   // 横断歩道。縞は車の進む向きと平行で、歩く向きに 0.9m おきに並ぶ。
   for (const crosswalk of CROSSWALKS) {
+    if (crosswalk.unmarked) continue;
     const [a0, a1] = crosswalk.a;
     const [b0, b1] = crosswalk.b;
     const length = Math.hypot((a0.x + a1.x) / 2 - (b0.x + b1.x) / 2, (a0.z + a1.z) / 2 - (b0.z + b1.z) / 2);
@@ -1366,6 +1367,7 @@ export const createCity = (): City => {
   };
   // 歩行者用信号: 横断歩道の両端の柱に、向こう岸を向けて付ける
   for (const crosswalk of CROSSWALKS) {
+    if (crosswalk.unmarked) continue;
     const ends: [[Vec, Vec], [Vec, Vec]][] = [
       [crosswalk.a, crosswalk.b],
       [crosswalk.b, crosswalk.a]

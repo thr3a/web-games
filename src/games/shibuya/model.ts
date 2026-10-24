@@ -308,7 +308,8 @@ const range = (random: () => number, min: number, max: number) => min + random()
 // 歩き始める角の選ばれやすさ（人の多い QFRONT 側とハチ公前広場を多めにする）
 const CORNER_WEIGHTS: Record<CornerId, number> = { NW: 0.32, NE: 0.18, SE: 0.32, SW: 0.18 };
 // 交差点まわりだけの人は、待つ場所の広さに合わせてさらに偏らせる（MAGNET 前の角は歩道が狭い）
-const CROWD_CORNER_WEIGHTS: Record<CornerId, number> = { NW: 0.36, NE: 0.08, SE: 0.38, SW: 0.18 };
+// MAGNET 前の角は白線のない対角（南西へ）にも渡るので、そのぶん少し足している
+const CROWD_CORNER_WEIGHTS: Record<CornerId, number> = { NW: 0.36, NE: 0.11, SE: 0.38, SW: 0.18 };
 
 const pickWeighted = <T extends { weight: number }>(random: () => number, list: T[]): T => {
   const total = list.reduce((sum, item) => sum + item.weight, 0);
@@ -434,7 +435,7 @@ export const createRoute = (random: () => number): Route => {
     const armOut = pickArm(random, from).reverse();
     return { path: [...armIn, ...armOut], waitIndex: -1 };
   }
-  // この角につながる横断歩道から 1 本選ぶ（斜め横断は QFRONT 前とハチ公前の間だけ）
+  // この角につながる横断歩道から 1 本選ぶ（斜めは QFRONT 前 ↔ ハチ公前と、白線のない北東 ↔ 南西）
   const start = from.ends[Math.floor(random() * from.ends.length)];
   return crossingRoute(
     random,

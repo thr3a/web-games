@@ -227,12 +227,15 @@ test('横断ルートの待つ位置と渡った先は車道の外で、別の�
     for (const point of [wait, end]) expect(pointInPolygon(point, JUNCTION)).toBe(false);
     // 渡った先は横断歩道の反対側（10m 以上離れている）
     expect(Math.hypot(wait.x - end.x, wait.z - end.z)).toBeGreaterThan(10);
-    const d = crosswalkOf('D');
-    const nearA = (p: Vec) => Math.hypot(p.x - d.a[0].x, p.z - d.a[0].z) < 12;
-    const nearB = (p: Vec) => Math.hypot(p.x - d.b[0].x, p.z - d.b[0].z) < 12;
-    if ((nearA(wait) && nearB(end)) || (nearB(wait) && nearA(end))) diagonals.add(nearA(wait) ? 'NW→SE' : 'SE→NW');
+    for (const id of ['D', 'X'] as const) {
+      const d = crosswalkOf(id);
+      const nearA = (p: Vec) => Math.hypot(p.x - d.a[0].x, p.z - d.a[0].z) < 12;
+      const nearB = (p: Vec) => Math.hypot(p.x - d.b[0].x, p.z - d.b[0].z) < 12;
+      if ((nearA(wait) && nearB(end)) || (nearB(wait) && nearA(end)))
+        diagonals.add(nearA(wait) ? `${d.from}→${d.to}` : `${d.to}→${d.from}`);
+    }
   }
-  expect(diagonals.size).toBe(2);
+  expect([...diagonals].sort()).toEqual(['NE→SW', 'NW→SE', 'SE→NW', 'SW→NE']);
 });
 
 // ---------------------------------------------------------------- 形状（layout.ts と osm.ts）
@@ -255,10 +258,13 @@ const hitBuilding = (a: Vec, b: Vec) => {
   return undefined;
 };
 
-test('斜め横断は 1 本だけで、横断歩道は交差点の車道にかかっている', () => {
-  expect(CROSSWALKS.map((item) => item.id).sort()).toEqual(['D', 'E', 'N', 'S', 'W']);
+test('白線の斜め横断は 1 本だけで、北東 ↔ 南西は白線なし。横断歩道は交差点の車道にかかっている', () => {
+  expect(CROSSWALKS.map((item) => item.id).sort()).toEqual(['D', 'E', 'N', 'S', 'W', 'X']);
+  expect(CROSSWALKS.filter((item) => item.unmarked).map((item) => item.id)).toEqual(['X']);
   const diagonal = crosswalkOf('D');
   expect([diagonal.from, diagonal.to].sort()).toEqual(['NW', 'SE']);
+  const unmarked = crosswalkOf('X');
+  expect([unmarked.from, unmarked.to].sort()).toEqual(['NE', 'SW']);
   for (const crosswalk of CROSSWALKS) {
     const polygon = crosswalkPolygon(crosswalk);
     const center = {

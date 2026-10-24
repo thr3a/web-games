@@ -175,21 +175,32 @@ export const JUNCTION: Vec[] = points([
 
 export type CornerId = 'NW' | 'NE' | 'SE' | 'SW';
 export type Crosswalk = {
-  id: 'N' | 'E' | 'S' | 'W' | 'D';
+  id: 'N' | 'E' | 'S' | 'W' | 'D' | 'X';
   from: CornerId;
   to: CornerId;
   // 各端の縁石側の辺（a は from 側、b は to 側）。a[0] と b[0]、a[1] と b[1] が同じ側の長辺になる。
   a: [Vec, Vec];
   b: [Vec, Vec];
+  // 白線がなく、人だけが渡る筋（路面のペイントと歩行者用信号を付けない）
+  unmarked?: boolean;
 };
 
-// 四辺と、QFRONT 前の広場とハチ公前広場を結ぶ斜め横断 1 本
+// 四辺と、QFRONT 前の広場とハチ公前広場を結ぶ斜め横断 1 本。
+// 北東 ↔ 南西は白線がないが、実際にはスクランブルのときに人が対角に渡っているので人だけ歩かせる。
 export const CROSSWALKS: Crosswalk[] = [
   { id: 'N', from: 'NW', to: 'NE', a: [v(-0.8, -24.8), v(-0.8, -17.6)], b: [v(15.4, -23.8), v(15.4, -14.3)] },
   { id: 'E', from: 'NE', to: 'SE', a: [v(15.4, -8.4), v(22.8, -8.2)], b: [v(14.6, 10.4), v(22.2, 10.4)] },
   { id: 'S', from: 'SW', to: 'SE', a: [v(-25.2, 10.3), v(-25.4, 17.6)], b: [v(6.2, 15.6), v(6.2, 22)] },
   { id: 'W', from: 'NW', to: 'SW', a: [v(-32.2, -14.6), v(-26, -14.4)], b: [v(-34.2, 2.5), v(-28, 2.7)] },
-  { id: 'D', from: 'NW', to: 'SE', a: [v(-12.8, -13.9), v(-5.5, -16.6)], b: [v(6.6, 15.2), v(13.2, 11.1)] }
+  { id: 'D', from: 'NW', to: 'SE', a: [v(-12.8, -13.9), v(-5.5, -16.6)], b: [v(6.6, 15.2), v(13.2, 11.1)] },
+  {
+    id: 'X',
+    from: 'NE',
+    to: 'SW',
+    a: [v(15.4, -14.3), v(15.6, -8.5)],
+    b: [v(-28.6, 2.7), v(-25.2, 10.2)],
+    unmarked: true
+  }
 ];
 
 export const crosswalkPolygon = (crosswalk: Crosswalk): Vec[] => [
@@ -331,7 +342,9 @@ export const CORNERS: Corner[] = [
     ],
     ends: [
       { crosswalk: 'N', via: [], span: [0.08, 0.92], setback: [0.4, 2], room: 3.5 },
-      { crosswalk: 'E', via: [v(15.6, -15.3), v(15.3, -12.8)], span: [0.12, 0.5], setback: [0.4, 1.4], room: 3 }
+      { crosswalk: 'E', via: [v(15.6, -15.3), v(15.3, -12.8)], span: [0.12, 0.5], setback: [0.4, 1.4], room: 3 },
+      // 角の先端（地下鉄の出入口と縁石の間）で待つ
+      { crosswalk: 'X', via: [v(15.6, -15.3)], span: [0.1, 0.9], setback: [0.4, 1.6], room: 2.5 }
     ]
   },
   {
@@ -417,7 +430,8 @@ export const CORNERS: Corner[] = [
     ],
     ends: [
       { crosswalk: 'W', via: [], span: [0.08, 0.85], setback: [0.4, 3], room: 9 },
-      { crosswalk: 'S', via: [], span: [0.08, 0.92], setback: [0.4, 3.5], room: 9 }
+      { crosswalk: 'S', via: [], span: [0.08, 0.92], setback: [0.4, 3.5], room: 9 },
+      { crosswalk: 'X', via: [], span: [0.1, 0.9], setback: [0.4, 3], room: 8 }
     ]
   }
 ];
