@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { createCity, LAMP_COLORS, type LampSet } from './city';
 import {
   CAR_RULES,
@@ -20,6 +24,16 @@ import {
   TRAIN,
   trainPose
 } from './model';
+import {
+  clockBlend,
+  createClock,
+  LOOKS,
+  type Look,
+  type Period,
+  setClockMode,
+  stepClock,
+  type TimeMode
+} from './timeOfDay';
 
 export type SimSnapshot = {
   phase: 1 | 2 | 3;
@@ -29,11 +43,16 @@ export type SimSnapshot = {
   cars: number;
   waiting: number;
   view: number;
+  timeMode: TimeMode;
+  period: Period;
+  // オートで次の時間帯へ移っている最中か
+  fading: boolean;
 };
 export type SimController = {
   setView: (index: number) => void;
   // 1 回のスクランブルで渡る人数の目安を変える
   setCrossers: (crossers: number) => void;
+  setTimeMode: (mode: TimeMode) => void;
   destroy: () => void;
 };
 
@@ -61,9 +80,6 @@ const CONTROLS = {
 };
 
 const COLORS = {
-  skyTop: '#3d7fd6',
-  skyHorizon: '#d4e6f4',
-  fog: 0xd4e6f4,
   wheel: 0x1c1c1f,
   glass: 0x1f2a36,
   light: 0xfff4d6,
@@ -109,11 +125,22 @@ const CAR_COLORS: Record<CarKind, { body: string[]; accent: string[] }> = {
 };
 
 type PartColor = 'body' | 'accent' | number;
+// 夕方・夜に光らせる部分
+type Glow = 'head' | 'tail' | 'cabin' | 'taxi';
 type Part = {
   shape: 'box' | 'wheel';
   size: [number, number, number];
   offset: [number, number, number];
   color: PartColor;
+  glow?: Glow;
+};
+
+// 光の色と、夜（vehicleLights = 1）のときの強さ
+const GLOWS: Record<Glow, { color: string; intensity: number }> = {
+  head: { color: '#fff4d6', intensity: 2.2 },
+  tail: { color: '#ff2a1a', intensity: 1.8 },
+  cabin: { color: '#ffe2b0', intensity: 0.7 },
+  taxi: { color: '#ffe58a', intensity: 1.6 }
 };
 
 const wheels = (x: number, z: number, d: number): Part[] =>
@@ -124,27 +151,41 @@ const wheels = (x: number, z: number, d: number): Part[] =>
     [-x, -z]
   ].map(([px, pz]) => ({ shape: 'wheel', size: [d, d, 0.26], offset: [px, d / 2, pz], color: COLORS.wheel }));
 
+// 左右一対のライト。x が負なら後ろ（テールライト）。
+const lightPair = (x: number, y: number, z: number, size: [number, number, number], glow: Glow): Part[] =>
+  [z, -z].map((pz) => ({
+    shape: 'box',
+    size,
+    offset: [x, y, pz],
+    color: glow === 'tail' ? 0x6e1414 : COLORS.light,
+    glow
+  }));
+
 // 車は +x 向きを前としてパーツを並べる
 const CAR_PARTS: Record<CarKind, Part[]> = {
   sedan: [
     { shape: 'box', size: [4.4, 0.62, 1.74], offset: [0, 0.6, 0], color: 'body' },
     { shape: 'box', size: [2.3, 0.52, 1.58], offset: [-0.25, 1.17, 0], color: COLORS.glass },
     { shape: 'box', size: [2.05, 0.08, 1.6], offset: [-0.3, 1.46, 0], color: 'body' },
-    { shape: 'box', size: [0.06, 0.16, 1.5], offset: [2.2, 0.74, 0], color: COLORS.light },
+    { shape: 'box', size: [0.06, 0.16, 1.5], offset: [2.2, 0.74, 0], color: COLORS.light, glow: 'head' },
+    ...lightPair(-2.2, 0.74, 0.62, [0.06, 0.14, 0.34], 'tail'),
     ...wheels(1.38, 0.78, 0.64)
   ],
   taxi: [
     { shape: 'box', size: [4.6, 0.64, 1.74], offset: [0, 0.62, 0], color: 'body' },
     { shape: 'box', size: [2.4, 0.56, 1.58], offset: [-0.15, 1.22, 0], color: COLORS.glass },
     { shape: 'box', size: [2.15, 0.08, 1.6], offset: [-0.2, 1.53, 0], color: 'body' },
-    { shape: 'box', size: [0.3, 0.2, 0.55], offset: [0.1, 1.67, 0], color: COLORS.taxiLamp },
-    { shape: 'box', size: [0.06, 0.16, 1.5], offset: [2.3, 0.76, 0], color: COLORS.light },
+    { shape: 'box', size: [0.3, 0.2, 0.55], offset: [0.1, 1.67, 0], color: COLORS.taxiLamp, glow: 'taxi' },
+    { shape: 'box', size: [0.06, 0.16, 1.5], offset: [2.3, 0.76, 0], color: COLORS.light, glow: 'head' },
+    ...lightPair(-2.3, 0.76, 0.62, [0.06, 0.14, 0.34], 'tail'),
     ...wheels(1.45, 0.78, 0.64)
   ],
   bus: [
     { shape: 'box', size: [10.5, 2.6, 2.48], offset: [0, 1.75, 0], color: 'body' },
-    { shape: 'box', size: [9.6, 0.95, 2.52], offset: [-0.2, 2.2, 0], color: COLORS.busWindow },
-    { shape: 'box', size: [0.08, 1.3, 2.2], offset: [5.25, 2.15, 0], color: COLORS.busWindow },
+    { shape: 'box', size: [9.6, 0.95, 2.52], offset: [-0.2, 2.2, 0], color: COLORS.busWindow, glow: 'cabin' },
+    { shape: 'box', size: [0.08, 1.3, 2.2], offset: [5.25, 2.15, 0], color: COLORS.busWindow, glow: 'cabin' },
+    ...lightPair(5.27, 0.85, 0.9, [0.06, 0.22, 0.4], 'head'),
+    ...lightPair(-5.27, 1.0, 1.0, [0.06, 0.3, 0.26], 'tail'),
     { shape: 'box', size: [10.52, 0.22, 2.52], offset: [0, 1.1, 0], color: 'accent' },
     { shape: 'box', size: [8.5, 0.3, 2.1], offset: [-0.5, 3.2, 0], color: 0xd9dcdf },
     ...wheels(3.6, 1.08, 0.95)
@@ -172,15 +213,29 @@ const drawCanvas = (width: number, height: number, draw: (ctx: CanvasRenderingCo
   return texture;
 };
 
-const skyTexture = () =>
-  drawCanvas(4, 256, (ctx) => {
-    const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-    gradient.addColorStop(0, COLORS.skyTop);
-    gradient.addColorStop(0.75, COLORS.skyHorizon);
-    gradient.addColorStop(1, COLORS.skyHorizon);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 4, 256);
+const paintSky = (ctx: CanvasRenderingContext2D, top: string, horizon: string) => {
+  const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+  gradient.addColorStop(0, top);
+  gradient.addColorStop(0.75, horizon);
+  gradient.addColorStop(1, horizon);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 4, 256);
+};
+
+// 時間帯が変わるたびに描き直す空のグラデーション
+const skyTexture = () => {
+  let context: CanvasRenderingContext2D | null = null;
+  const texture = drawCanvas(4, 256, (ctx) => {
+    context = ctx;
+    paintSky(ctx, LOOKS.day.skyTop, LOOKS.day.skyHorizon);
   });
+  const repaint = (top: string, horizon: string) => {
+    if (!context) return;
+    paintSky(context, top, horizon);
+    texture.needsUpdate = true;
+  };
+  return { texture, repaint };
+};
 
 // 山手線風の車両側面（銀色の車体に緑の帯と窓・ドア）
 const trainSideTexture = () =>
@@ -205,6 +260,31 @@ const trainSideTexture = () =>
     ctx.fillRect(0, 2, 512, 5);
   });
 
+// 側面の窓だけ白い、夜の車内の明かり用のマスク（trainSideTexture と同じ配置）
+const trainSideGlowTexture = () =>
+  drawCanvas(512, 96, (ctx) => {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 512, 96);
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 4; i++) {
+      const doorX = 40 + i * 120;
+      ctx.fillRect(doorX + 4, 18, 24, 34);
+      if (i < 3) {
+        ctx.fillRect(doorX + 46, 18, 70, 32);
+      }
+    }
+  });
+
+// 前照灯だけ白いマスク（trainEndTexture と同じ配置）
+const trainEndGlowTexture = () =>
+  drawCanvas(128, 160, (ctx) => {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 128, 160);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(14, 120, 18, 10);
+    ctx.fillRect(96, 120, 18, 10);
+  });
+
 const trainEndTexture = () =>
   drawCanvas(128, 160, (ctx) => {
     ctx.fillStyle = '#d3d7da';
@@ -226,7 +306,12 @@ const lightUp = (set: LampSet, light: CarLight) => {
 
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
-export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSnapshot) => void): SimController => {
+// onHeading はカメラの向き（北から時計回りのラジアン）が変わったフレームごとに呼ぶ。毎フレーム変わりうるので onChange とは分ける。
+export const createShibuyaSim = (
+  parent: HTMLElement,
+  onChange: (snapshot: SimSnapshot) => void,
+  onHeading: (heading: number) => void
+): SimController => {
   const model = createModel({ warmUp: 30, crossers: PED_RULES.crossersInitial });
   const disposables: { dispose: () => void }[] = [];
 
@@ -238,9 +323,10 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
 
   const scene = new THREE.Scene();
   const sky = skyTexture();
-  disposables.push(sky);
-  scene.background = sky;
-  scene.fog = new THREE.Fog(COLORS.fog, 180, 540);
+  disposables.push(sky.texture);
+  scene.background = sky.texture;
+  const fog = new THREE.Fog(LOOKS.day.fog, 180, 540);
+  scene.fog = fog;
 
   const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.5, 1500);
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -258,9 +344,10 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
   controls.target.set(...first.target);
   controls.update();
 
-  scene.add(new THREE.HemisphereLight('#dcebff', '#a49684', 1.5));
-  const sun = new THREE.DirectionalLight('#fff3e0', 2.6);
-  sun.position.set(70, 160, 110);
+  const hemi = new THREE.HemisphereLight(LOOKS.day.hemiSky, LOOKS.day.hemiGround, LOOKS.day.hemiIntensity);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(LOOKS.day.sunColor, LOOKS.day.sunIntensity);
+  sun.position.set(...LOOKS.day.sunDirection);
   sun.castShadow = true;
   sun.shadow.mapSize.set(4096, 4096);
   sun.shadow.camera.left = -150;
@@ -288,6 +375,7 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
     new THREE.Matrix4().compose(new THREE.Vector3(...offset), new THREE.Quaternion(), new THREE.Vector3(...size));
 
   type CarMesh = { mesh: THREE.InstancedMesh; local: THREE.Matrix4; color: PartColor };
+  const glowMaterials: { material: THREE.MeshStandardMaterial; intensity: number }[] = [];
   const buildCarMeshes = (kind: CarKind): CarMesh[] =>
     CAR_PARTS[kind].map((part) => {
       const material = new THREE.MeshStandardMaterial({
@@ -295,6 +383,12 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
         roughness: part.color === COLORS.glass || part.color === COLORS.busWindow ? 0.25 : 0.5,
         metalness: 0.1
       });
+      if (part.glow) {
+        const glow = GLOWS[part.glow];
+        material.emissive.set(glow.color);
+        material.emissiveIntensity = 0;
+        glowMaterials.push({ material, intensity: glow.intensity });
+      }
       const mesh = new THREE.InstancedMesh(
         part.shape === 'wheel' ? wheelGeometry : boxGeometry,
         material,
@@ -395,8 +489,28 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
   // ---------------- 高架を走る電車
   const sideTexture = trainSideTexture();
   const endTexture = trainEndTexture();
-  const sideMaterial = new THREE.MeshStandardMaterial({ map: sideTexture, roughness: 0.4, metalness: 0.2 });
-  const endMaterial = new THREE.MeshStandardMaterial({ map: endTexture, roughness: 0.4 });
+  const sideGlow = trainSideGlowTexture();
+  const endGlow = trainEndGlowTexture();
+  const sideMaterial = new THREE.MeshStandardMaterial({
+    map: sideTexture,
+    emissiveMap: sideGlow,
+    emissive: GLOWS.cabin.color,
+    emissiveIntensity: 0,
+    roughness: 0.4,
+    metalness: 0.2
+  });
+  const endMaterial = new THREE.MeshStandardMaterial({
+    map: endTexture,
+    emissiveMap: endGlow,
+    emissive: GLOWS.head.color,
+    emissiveIntensity: 0,
+    roughness: 0.4
+  });
+  glowMaterials.push(
+    { material: sideMaterial, intensity: 1.1 },
+    { material: endMaterial, intensity: GLOWS.head.intensity }
+  );
+  disposables.push(sideGlow, endGlow);
   const roofMaterial = new THREE.MeshStandardMaterial({ color: '#9ea5ab', roughness: 0.6 });
   const bogieMaterial = new THREE.MeshStandardMaterial({ color: '#2a2c30', roughness: 0.8 });
   const carGeometry = new THREE.BoxGeometry(2.9, 3.4, TRAIN.carLength);
@@ -448,6 +562,68 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
     for (const material of city.screens) material.uniforms.uTime.value = time;
   };
 
+  // ---------------- 時間帯（空・光・窓明かり・ライト・ブルーム）
+  const renderTarget = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+  // 後処理を通すと renderer の antialias が効かないので、描画先でマルチサンプルする
+  const composer = new EffectComposer(renderer, renderTarget);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0, 0.25, 1);
+  composer.addPass(bloom);
+  const outputPass = new OutputPass();
+  composer.addPass(outputPass);
+  disposables.push(composer, bloom, outputPass);
+
+  type LookColors = Record<'skyTop' | 'skyHorizon' | 'fog' | 'hemiSky' | 'hemiGround' | 'sunColor', THREE.Color>;
+  const colorKeys: (keyof LookColors)[] = ['skyTop', 'skyHorizon', 'fog', 'hemiSky', 'hemiGround', 'sunColor'];
+  const toColors = (look: Look): LookColors => ({
+    skyTop: new THREE.Color(look.skyTop),
+    skyHorizon: new THREE.Color(look.skyHorizon),
+    fog: new THREE.Color(look.fog),
+    hemiSky: new THREE.Color(look.hemiSky),
+    hemiGround: new THREE.Color(look.hemiGround),
+    sunColor: new THREE.Color(look.sunColor)
+  });
+  const lookColors: Record<Period, LookColors> = {
+    day: toColors(LOOKS.day),
+    evening: toColors(LOOKS.evening),
+    night: toColors(LOOKS.night)
+  };
+  const mixed = toColors(LOOKS.day);
+  // 影のカメラの範囲を変えずに済むよう、太陽はどの時間帯でも原点から同じ距離に置く
+  const sunDistance = new THREE.Vector3(...LOOKS.day.sunDirection).length();
+  const sunFrom = new THREE.Vector3();
+  const sunTo = new THREE.Vector3();
+
+  const clock = createClock('auto');
+  let lookKey = '';
+  const applyLook = () => {
+    const { from, to, k } = clockBlend(clock);
+    const key = `${from}:${to}:${k.toFixed(4)}`;
+    if (key === lookKey) return;
+    lookKey = key;
+    const a = LOOKS[from];
+    const b = LOOKS[to];
+    const mix = (x: number, y: number) => x + (y - x) * k;
+    for (const name of colorKeys) mixed[name].lerpColors(lookColors[from][name], lookColors[to][name], k);
+    sky.repaint(`#${mixed.skyTop.getHexString()}`, `#${mixed.skyHorizon.getHexString()}`);
+    fog.color.copy(mixed.fog);
+    hemi.color.copy(mixed.hemiSky);
+    hemi.groundColor.copy(mixed.hemiGround);
+    hemi.intensity = mix(a.hemiIntensity, b.hemiIntensity);
+    sun.color.copy(mixed.sunColor);
+    sun.intensity = mix(a.sunIntensity, b.sunIntensity);
+    sunFrom.set(...a.sunDirection).normalize();
+    sunTo.set(...b.sunDirection).normalize();
+    sun.position.lerpVectors(sunFrom, sunTo, k).setLength(sunDistance);
+    const vehicleLights = mix(a.vehicleLights, b.vehicleLights);
+    for (const { material, intensity } of glowMaterials) material.emissiveIntensity = intensity * vehicleLights;
+    city.setLights(mix(a.windowLit, b.windowLit), mix(a.signBoost, b.signBoost));
+    bloom.strength = mix(a.bloomStrength, b.bloomStrength);
+    bloom.threshold = mix(a.bloomThreshold, b.bloomThreshold);
+    // 昼はブルームを切って、後処理の負荷と白い壁のにじみを避ける
+    bloom.enabled = bloom.strength > 0.01;
+  };
+
   // ---------------- 定点カメラの切り替え
   const transition = {
     active: false,
@@ -491,6 +667,14 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
   };
 
   // ---------------- 画面表示用の状態
+  // x が東・z が南なので、北（-z）から時計回りの角度は atan2(dx, -dz)
+  let lastHeading = Number.NaN;
+  const emitHeading = () => {
+    const heading = Math.atan2(controls.target.x - camera.position.x, camera.position.z - controls.target.z);
+    if (Math.abs(heading - lastHeading) < 0.002) return;
+    lastHeading = heading;
+    onHeading(heading);
+  };
   let last: SimSnapshot | null = null;
   let carCount = countCars(model);
   let countTimer = 0;
@@ -507,7 +691,10 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
       ped: pedLight(model.signal),
       cars: carCount,
       waiting: model.peds.reduce((sum, ped) => sum + (ped.state === 'wait' ? 1 : 0), 0),
-      view
+      view,
+      timeMode: clock.mode,
+      period: clock.period,
+      fading: clockBlend(clock).k > 0
     };
     if (
       last &&
@@ -517,6 +704,9 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
       last.ped === next.ped &&
       last.cars === next.cars &&
       last.view === next.view &&
+      last.timeMode === next.timeMode &&
+      last.period === next.period &&
+      last.fading === next.fading &&
       Math.abs(last.waiting - next.waiting) < 5
     ) {
       return;
@@ -530,6 +720,7 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
     const height = parent.clientHeight;
     if (width === 0 || height === 0) return;
     renderer.setSize(width, height);
+    composer.setSize(width, height);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
   };
@@ -556,9 +747,12 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
     syncPeds();
     syncTrains();
     syncSignals(time);
+    stepClock(clock, dt);
+    applyLook();
     updateCamera(dt);
-    renderer.render(scene, camera);
+    composer.render(dt);
     emit(dt);
+    emitHeading();
     frame = requestAnimationFrame(loop);
   };
   frame = requestAnimationFrame(loop);
@@ -566,6 +760,7 @@ export const createShibuyaSim = (parent: HTMLElement, onChange: (snapshot: SimSn
   return {
     setView,
     setCrossers: (crossers: number) => setCrossers(model, crossers),
+    setTimeMode: (mode: TimeMode) => setClockMode(clock, mode),
     destroy: () => {
       cancelAnimationFrame(frame);
       observer.disconnect();

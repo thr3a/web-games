@@ -1,5 +1,17 @@
 import { expect, test } from 'vitest';
 import {
+  CORNERS,
+  CROSSWALKS,
+  crosswalkOf,
+  crosswalkPolygon,
+  JUNCTION,
+  LANE_SPECS,
+  pointInPolygon,
+  STATION_Z,
+  sampleAt,
+  type Vec
+} from '../src/games/shibuya/layout';
+import {
   CAR_SPECS,
   type Car,
   carLight,
@@ -18,18 +30,6 @@ import {
   TRAIN,
   trainPose
 } from '../src/games/shibuya/model';
-import {
-  CORNERS,
-  CROSSWALKS,
-  crosswalkOf,
-  crosswalkPolygon,
-  JUNCTION,
-  LANE_SPECS,
-  pointInPolygon,
-  STATION_Z,
-  sampleAt,
-  type Vec
-} from '../src/games/shibuya/layout';
 import { OSM_BUILDINGS, OSM_ROADS } from '../src/games/shibuya/osm';
 
 const FRAME = 1 / 60;
@@ -47,7 +47,12 @@ const makeCar = (id: number, s: number, v: number): Car => ({
 
 // 歩行者なし・車の自動生成なしで、指定した車だけを置いた状態を作る。
 const emptyModel = (phase: Phase) => {
-  const model = createModel({ random: createRandom(7), peds: 0, signal: { phase, elapsed: 0 } });
+  const model = createModel({
+    random: createRandom(7),
+    peds: 0,
+    crossers: PED_RULES.crossersMin,
+    signal: { phase, elapsed: 0 }
+  });
   for (const lane of model.lanes) lane.spawnTimer = Number.POSITIVE_INFINITY;
   model.trains = [];
   return model;
@@ -134,7 +139,12 @@ test('後続の車は前の車との車間を保ち、重ならない', () => {
   const model = emptyModel('carB');
   const lane = laneOf(model, 'A');
   const base = lane.stopS - 100;
-  lane.cars.push(makeCar(1, base + 100, 11), makeCar(2, base + 85, 11), makeCar(3, base + 70, 11), makeCar(4, base + 30, 11));
+  lane.cars.push(
+    makeCar(1, base + 100, 11),
+    makeCar(2, base + 85, 11),
+    makeCar(3, base + 70, 11),
+    makeCar(4, base + 30, 11)
+  );
   runHolding(model, 'carB', 30);
   for (let i = 1; i < lane.cars.length; i++) {
     const front = lane.cars[i - 1];
@@ -336,7 +346,10 @@ test('歩行者の道筋は建物を通らない', () => {
           return { x: p.x + ((b.z - a.z) / len) * offset, z: p.z - ((b.x - a.x) / len) * offset };
         });
         for (let i = 1; i < line.length; i++) {
-          expect(hitBuilding(line[i - 1], line[i]), `${corner.id} arm ${arm.line[0].x},${arm.line[0].z}`).toBeUndefined();
+          expect(
+            hitBuilding(line[i - 1], line[i]),
+            `${corner.id} arm ${arm.line[0].x},${arm.line[0].z}`
+          ).toBeUndefined();
         }
       }
     }

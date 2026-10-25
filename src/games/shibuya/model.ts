@@ -281,7 +281,7 @@ export const PED_RULES = {
   // 1 回のスクランブルで渡る人数の目安（画面のスライダーで選ぶ）
   crossersMin: 150,
   crossersMax: 1000,
-  crossersInitial: 500,
+  crossersInitial: 1000,
   crossersStep: 50,
   // count 人のうち 1 回のスクランブルで渡るのは約 145 人（実測）。目安との差は交差点まわりだけの人で埋める。
   baseCrossers: 145,

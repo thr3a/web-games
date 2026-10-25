@@ -134,7 +134,8 @@ const outwardNormal = (a: Vec, b: Vec, sign: number): Vec => {
   return { x: (sign * (b.z - a.z)) / len, z: (-sign * (b.x - a.x)) / len };
 };
 
-type PrismOptions = { roof?: Batch; roofColor?: THREE.Color; bottom?: boolean };
+// uStart は壁の UV の始まり。窓の格子の幅の整数倍にすれば見た目は変わらない。
+type PrismOptions = { roof?: Batch; roofColor?: THREE.Color; bottom?: boolean; uStart?: number };
 
 // 多角形の底面を y0 から y1 まで押し出した柱。壁の UV は m 単位（窓の格子をそろえるため）。
 const pushPrism = (
@@ -147,7 +148,7 @@ const pushPrism = (
 ) => {
   const n = footprint.length;
   const sign = ringArea(footprint) >= 0 ? 1 : -1;
-  let u = 0;
+  let u = options.uStart ?? 0;
   for (let i = 0; i < n; i++) {
     const a = footprint[i];
     const b = footprint[(i + 1) % n];
@@ -394,15 +395,56 @@ const drawAsphalt: Drawer = (ctx, size) => {
   }
 };
 
+// 窓の範囲（1 区画に対する割合で x, y, 幅, 高さ）。夜に明かりを点ける部分。
+type WindowRect = [number, number, number, number];
 type Style = 'glass' | 'office' | 'apartment' | 'dark' | 'framed' | 'panel';
-const STYLE_SPECS: Record<Style, { draw: Drawer; cell: [number, number]; roughness: number }> = {
-  glass: { draw: drawGlass, cell: [3, 3.8], roughness: 0.35 },
-  office: { draw: drawOffice, cell: [3.2, 3.6], roughness: 0.75 },
-  apartment: { draw: drawApartment, cell: [3, 3.1], roughness: 0.85 },
-  dark: { draw: drawDark, cell: [2.6, 3.8], roughness: 0.4 },
-  framed: { draw: drawFramed, cell: [2.4, 3.4], roughness: 0.7 },
-  panel: { draw: drawPanel, cell: [1.6, 3.6], roughness: 0.45 }
+const STYLE_SPECS: Record<Style, { draw: Drawer; cell: [number, number]; roughness: number; windows: WindowRect[] }> = {
+  glass: { draw: drawGlass, cell: [3, 3.8], roughness: 0.35, windows: [[0.06, 0.04, 0.88, 0.74]] },
+  office: {
+    draw: drawOffice,
+    cell: [3.2, 3.6],
+    roughness: 0.75,
+    windows: [
+      [0, 0.12, 0.47, 0.5],
+      [0.53, 0.12, 0.47, 0.5]
+    ]
+  },
+  apartment: { draw: drawApartment, cell: [3, 3.1], roughness: 0.85, windows: [[0.2, 0.18, 0.6, 0.48]] },
+  dark: { draw: drawDark, cell: [2.6, 3.8], roughness: 0.4, windows: [[0.04, 0.04, 0.92, 0.8]] },
+  framed: { draw: drawFramed, cell: [2.4, 3.4], roughness: 0.7, windows: [[0.2, 0.22, 0.6, 0.44]] },
+  // 109 の銀色のパネルには窓がない
+  panel: { draw: drawPanel, cell: [1.6, 3.6], roughness: 0.45, windows: [] }
 };
+
+// 窓の部分だけ白い、夜の明かり用のマスク
+const windowMask =
+  (windows: WindowRect[]): Drawer =>
+  (ctx, size) => {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#ffffff';
+    for (const [x, y, w, h] of windows) ctx.fillRect(x * size, y * size, w * size, h * size);
+  };
+
+// 窓 1 区画ごとに明かりを点けるかを決めるシェーダー。uWindowLit が上がるほど点いている窓が増える。
+const WINDOW_COMMON = /* glsl */ `
+#include <common>
+uniform float uWindowLit;
+float windowHash(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+`;
+const WINDOW_EMISSIVE = /* glsl */ `
+#ifdef USE_EMISSIVEMAP
+  float windowSeed = windowHash(floor(vEmissiveMapUv));
+  float windowOn = clamp((uWindowLit - windowSeed) * 25.0, 0.0, 1.0);
+  vec3 windowTint = mix(vec3(1.0, 0.78, 0.5), vec3(0.82, 0.9, 1.0), step(0.7, fract(windowSeed * 7.31)));
+  float windowLevel = 0.45 + 0.5 * fract(windowSeed * 3.17);
+  totalEmissiveRadiance *= texture2D(emissiveMap, vEmissiveMapUv).rgb * windowTint * windowLevel * windowOn;
+#endif
+`;
 const STYLES: Style[] = ['glass', 'office', 'apartment', 'dark', 'framed', 'panel'];
 const GENERIC_STYLES: Style[] = ['glass', 'office', 'office', 'apartment', 'apartment', 'dark'];
 
@@ -445,29 +487,89 @@ varying vec2 vUv;
 uniform float uTime;
 uniform float uSeed;
 uniform float uAspect;
+uniform float uBoost;
+
+const float SCENES = 6.0;
 
 vec3 palette(float t) {
   return 0.55 + 0.45 * cos(6.2831 * (t + vec3(0.0, 0.33, 0.67)));
 }
 
+float hash(float n) {
+  return fract(sin(n) * 43758.5453);
+}
+
+// 広告らしい単色。ときどき白や黒も混ぜる。
+vec3 flatColor(float n) {
+  float h = hash(n * 7.13 + uSeed * 31.0);
+  if (h < 0.14) return vec3(0.95, 0.95, 0.93);
+  if (h < 0.24) return vec3(0.08, 0.09, 0.12);
+  return palette(uSeed + h * 1.7);
+}
+
 vec3 sceneColor(float id, vec2 uv, float t) {
   vec2 p = (uv - 0.5) * vec2(uAspect, 1.0);
+  // 斜めに流れる 2 色の縞
   if (id < 0.5) {
     float v = sin((p.x + p.y * 0.6) * 9.0 - t * 2.5);
     return mix(palette(uSeed + t * 0.03), palette(uSeed + 0.45 + t * 0.03), smoothstep(-0.2, 0.2, v));
   }
+  // ゆっくりうねる色の雲
   if (id < 1.5) {
-    float r = length(p);
-    return palette(r * 1.4 - t * 0.35 + uSeed) * (0.75 + 0.25 * sin(r * 30.0 - t * 6.0));
-  }
-  if (id < 2.5) {
     vec2 q = p * 3.0;
     float n = sin(q.x + t * 0.7) + sin(q.y * 1.3 - t * 0.5) + sin((q.x + q.y) * 0.8 + t * 0.9);
     return palette(n * 0.12 + t * 0.04 + uSeed);
   }
-  vec2 cell = floor(uv * vec2(uAspect * 5.0, 5.0));
-  float h = fract(sin(dot(cell, vec2(12.9898, 78.233)) + floor(t * 1.5) * 3.1) * 43758.5453);
-  return palette(h * 0.5 + uSeed) * (0.55 + 0.45 * h);
+  // ブロックごとに色が変わるモザイク
+  if (id < 2.5) {
+    vec2 cell = floor(uv * vec2(uAspect * 5.0, 5.0));
+    float h = fract(sin(dot(cell, vec2(12.9898, 78.233)) + floor(t * 1.5) * 3.1) * 43758.5453);
+    return palette(h * 0.5 + uSeed) * (0.55 + 0.45 * h);
+  }
+  // 色付きのカプセルが 3 段、交互の向きに流れる帯
+  if (id < 3.5) {
+    vec3 bg = mix(palette(uSeed + 0.55), palette(uSeed + 0.75), uv.y) * 0.3;
+    float ry = uv.y * 3.0;
+    float row = floor(ry);
+    float ly = fract(ry) - 0.5;
+    float dir = mod(row, 2.0) < 0.5 ? 1.0 : -1.0;
+    float lx = uv.x * uAspect * 3.0 + dir * t * (1.6 + (2.0 - row) * 0.5);
+    float cellW = 2.6;
+    float n = floor(lx / cellW);
+    float fx = mod(lx, cellW) - cellW * 0.5;
+    float rad = 0.3;
+    float hl = 0.45 + 0.7 * hash(n * 12.9 + row * 7.1);
+    vec2 d = abs(vec2(fx, ly)) - vec2(hl - rad, 0.0);
+    float sd = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - rad;
+    float on = 1.0 - smoothstep(-0.03, 0.03, sd);
+    return mix(bg, palette(uSeed + hash(n * 3.7 + row * 1.3) * 0.7), on);
+  }
+  // 一面の単色が、大きなブロック単位で次の色へ切り替わる。切り替わる瞬間だけ差し色が走る。
+  if (id < 4.5) {
+    float span = 3.0;
+    float k = floor(t / span);
+    float f = smoothstep(0.0, 0.6, fract(t / span));
+    vec2 cell = floor(uv * vec2(uAspect * 6.0, 6.0));
+    float h = hash(dot(cell, vec2(12.9898, 78.233)) + k * 1.37);
+    float order = 0.55 * h + 0.45 * (cell.x / (uAspect * 6.0));
+    vec3 col = mix(flatColor(k + 60.0), flatColor(k + 61.0), step(order, f));
+    float flash = step(order, f) * step(f - 0.08, order) * step(f, 0.999);
+    return mix(col, flatColor(k + 120.0), flash);
+  }
+  // 白地に角丸のカードが並び、列ごとに違う速さで上へ流れる
+  float cols = max(2.0, floor(uAspect * 2.0 + 0.5));
+  float cw = uAspect / cols;
+  float ci = floor(uv.x * cols);
+  float fx = fract(uv.x * cols);
+  float yy = (uv.y + t * 0.07 * (1.0 + mod(ci, 2.0) * 0.5)) / cw;
+  vec2 q = vec2(fx, fract(yy)) - 0.5;
+  float rad = 0.1;
+  vec2 d = abs(q) - vec2(0.42 - rad);
+  float sd = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - rad;
+  float on = 1.0 - smoothstep(-0.01, 0.01, sd);
+  float n = ci * 31.0 + floor(yy);
+  vec3 card = mix(flatColor(n + 200.0), palette(uSeed + hash(n) * 1.7 + 0.15), q.x + q.y + 0.5);
+  return mix(vec3(0.92, 0.93, 0.95), card, on);
 }
 
 void main() {
@@ -475,12 +577,13 @@ void main() {
   float t = uTime + uSeed * 17.0;
   float k = floor(t / span);
   float f = fract(t / span);
-  float a = mod(k + floor(uSeed * 4.0), 4.0);
-  float b = mod(a + 1.0, 4.0);
+  float a = mod(k + floor(uSeed * SCENES), SCENES);
+  float b = mod(a + 1.0, SCENES);
   vec3 col = mix(sceneColor(a, vUv, t), sceneColor(b, vUv, t), smoothstep(0.88, 1.0, f));
   vec2 px = fract(vUv * vec2(uAspect * 90.0, 90.0));
   col *= 0.86 + 0.14 * step(0.18, px.x) * step(0.18, px.y);
-  gl_FragColor = vec4(col, 1.0);
+  // 色は sRGB で決めているので、ブルームの後処理（リニアで扱う）に合わせて変換する
+  gl_FragColor = vec4(pow(col, vec3(2.2)) * uBoost, 1.0);
 }
 `;
 
@@ -549,6 +652,8 @@ export type LampSet = { green: THREE.MeshBasicMaterial; yellow: THREE.MeshBasicM
 export type City = {
   group: THREE.Group;
   screens: THREE.ShaderMaterial[];
+  // 時間帯に合わせて窓明かりと看板・ビジョンの明るさを変える
+  setLights: (windowLit: number, signBoost: number) => void;
   lamps: { A: LampSet; B: LampSet; pedGreen: THREE.MeshBasicMaterial; pedRed: THREE.MeshBasicMaterial };
   dispose: () => void;
 };
@@ -627,7 +732,11 @@ export const createCity = (): City => {
 
   const building = (footprint: Vec[], y0: number, height: number, style: Style, tint: string) => {
     const shade = 0.62 + random() * 0.2;
+    // 建物ごとに窓の格子の番号をずらし、隣どうしで窓明かりの点き方がそろわないようにする。
+    // 共有の random を使うと以降の配置がすべて変わるので、外形の座標から決める。
+    const offset = Math.abs(Math.floor(footprint[0].x * 7.13 + footprint[0].z * 3.71)) % 512;
     pushPrism(walls[style], footprint, y0, height, c(tint), {
+      uStart: offset * STYLE_SPECS[style].cell[0],
       roof: roofs,
       roofColor: new THREE.Color(shade, shade, shade * 0.98),
       bottom: y0 > 0
@@ -642,7 +751,8 @@ export const createCity = (): City => {
       uniforms: {
         uTime: { value: 0 },
         uSeed: { value: random() },
-        uAspect: { value: aspect }
+        uAspect: { value: aspect },
+        uBoost: { value: 1 }
       }
     });
     const mesh = new THREE.Mesh(geometry, material);
@@ -1433,19 +1543,37 @@ export const createCity = (): City => {
   }
 
   // ---------------- メッシュ化
+  const windowLit = { value: 0 };
   for (const style of STYLES) {
     const spec = STYLE_SPECS[style];
-    const map = canvasTexture(128, spec.draw, [1 / spec.cell[0], 1 / spec.cell[1]]);
+    const repeat: [number, number] = [1 / spec.cell[0], 1 / spec.cell[1]];
+    const map = canvasTexture(128, spec.draw, repeat);
     disposables.push(map);
-    addMesh(
-      toGeometry(walls[style]),
-      new THREE.MeshStandardMaterial({ map, vertexColors: true, roughness: spec.roughness, metalness: 0.05 }),
-      true
-    );
+    const material = new THREE.MeshStandardMaterial({
+      map,
+      vertexColors: true,
+      roughness: spec.roughness,
+      metalness: 0.05
+    });
+    if (spec.windows.length > 0) {
+      // 区画の番号を map と同じ繰り返しで数えるため、マスクにも同じ repeat を付ける
+      const mask = canvasTexture(64, windowMask(spec.windows), repeat);
+      disposables.push(mask);
+      material.emissiveMap = mask;
+      material.emissive.set('#ffffff');
+      material.onBeforeCompile = (shader) => {
+        shader.uniforms.uWindowLit = windowLit;
+        shader.fragmentShader = shader.fragmentShader
+          .replace('#include <common>', WINDOW_COMMON)
+          .replace('#include <emissivemap_fragment>', WINDOW_EMISSIVE);
+      };
+    }
+    addMesh(toGeometry(walls[style]), material, true);
   }
   addMesh(toGeometry(roofs), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }), true);
   addMesh(toGeometry(plain), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), true);
-  addMesh(toGeometry(signs), new THREE.MeshBasicMaterial({ vertexColors: true }), false);
+  const signMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
+  addMesh(toGeometry(signs), signMaterial, false);
   disposables.push(pavingTexture, asphaltTexture);
   addMesh(
     toGeometry(paving),
@@ -1536,9 +1664,16 @@ export const createCity = (): City => {
     disposables.push(mesh);
   }
 
+  const setLights = (lit: number, signBoost: number) => {
+    windowLit.value = lit;
+    signMaterial.color.setScalar(signBoost);
+    for (const material of screens) material.uniforms.uBoost.value = signBoost;
+  };
+
   return {
     group,
     screens,
+    setLights,
     lamps,
     dispose: () => {
       for (const item of disposables) item.dispose();
