@@ -582,6 +582,9 @@ void main() {
   vec3 col = mix(sceneColor(a, vUv, t), sceneColor(b, vUv, t), smoothstep(0.88, 1.0, f));
   vec2 px = fract(vUv * vec2(uAspect * 90.0, 90.0));
   col *= 0.86 + 0.14 * step(0.18, px.x) * step(0.18, px.y);
+  // カードの色の mix は重みが 0〜1 をはみ出すので色が負になりうる。負の pow は GPU によって NaN になり、
+  // ブルームのぼかしで画面全体に広がって夕方・夜が真っ白になるため、先に 0〜1 に収める。
+  col = clamp(col, 0.0, 1.0);
   // 色は sRGB で決めているので、ブルームの後処理（リニアで扱う）に合わせて変換する
   gl_FragColor = vec4(pow(col, vec3(2.2)) * uBoost, 1.0);
 }
