@@ -1274,16 +1274,21 @@ export const createCity = (): City => {
     const a = { x: -44, z: -25.3 };
     const b = { x: -37.6, z: -31.1 };
     const sign = ringArea(corner) >= 0 ? 1 : -1;
-    const n = outwardNormal(a, b, sign);
-    wallScreen(a, b, n, 8, 18, 0.6);
+    // 外形の頂点は b → a の順に並んでいるので、外向きの法線は b → a で求める
+    const n = outwardNormal(b, a, sign);
+    // 実物の DHC のビジョンと同じく上の方、屋上のすぐ下に置く（枠は実物の青ではなく他と同じ黒）
+    wallScreen(a, b, n, 13.5, 21.5, 0.6);
     const center = lerp(a, b, 0.5);
     const tangent = {
       x: (b.x - a.x) / Math.hypot(b.x - a.x, b.z - a.z),
       z: (b.z - a.z) / Math.hypot(b.x - a.x, b.z - a.z)
     };
+    // サロンパスの看板: 下が緑、上が青で、間に白い線
     pushBox(signs, [center.x - n.x * 2, 30, center.z - n.z * 2], [10, 6.5, 0.5], c('#2fa84f'), tangent);
-    pushBox(signs, [center.x - n.x * 2, 36.2, center.z - n.z * 2], [10, 5.5, 0.5], c('#1f6fd1'), tangent);
-    pushBox(plain, [center.x - n.x * 2.6, 32, center.z - n.z * 2.6], [10, 16, 0.4], c('#3a3f45'), tangent);
+    pushBox(signs, [center.x - n.x * 2, 33.5, center.z - n.z * 2], [10, 0.5, 0.5], c('#ffffff'), tangent);
+    pushBox(signs, [center.x - n.x * 2, 36.35, center.z - n.z * 2], [10, 5.2, 0.5], c('#1f6fd1'), tangent);
+    // 後ろの板は青い看板の上にはみ出さない高さまで（y 24〜38.9）
+    pushBox(plain, [center.x - n.x * 2.6, 31.45, center.z - n.z * 2.6], [10, 14.9, 0.4], c('#9ca2a8'), tangent);
   }
 
   // 109: 道玄坂と文化村通りの分かれ目に立つ。銀色の円筒の塔の上に白い看板の筒、正面に縦長の広告。
